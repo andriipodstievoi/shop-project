@@ -211,11 +211,12 @@ main {
 }
 
 /* ===== Vertical full-page slider ===== */
+/* No scroll-behavior here on purpose: it hijacks the per-frame scrollTop
+   assignments in javascript.js and fights the eased wheel animation. */
 .fullpage-slider {
     height: 100vh;
     overflow-y: scroll;
     scroll-snap-type: y mandatory;
-    scroll-behavior: smooth;
 }
 
 .fp-slide {

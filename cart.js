@@ -26,6 +26,50 @@ function goToProduct(name, price) {
     window.location.href = 'empty.html?product=' + encodeURIComponent(name) + '&price=' + encodeURIComponent(price);
 }
 
+// Builds the illustration + name/price part of a cart or wishlist row.
+// Product names originate from the URL on empty.html, so they are treated as
+// untrusted and set with textContent, never interpolated into innerHTML.
+function buildItemMedia(item, priceLabel) {
+    const icon = PRODUCT_ICONS[item.name];
+
+    const illustration = document.createElement('div');
+    illustration.className = 'cart-item-illustration';
+    illustration.style.background = icon ? icon.bg : '#eee';
+    illustration.style.color = icon ? icon.color : '#999';
+    // icon.svg is our own static markup, looked up by exact name, never user input
+    illustration.innerHTML = '<svg viewBox="0 0 100 100" aria-hidden="true">' + (icon ? icon.svg : '') + '</svg>';
+
+    const info = document.createElement('div');
+    info.className = 'cart-item-info';
+
+    const nameEl = document.createElement('div');
+    nameEl.className = 'cart-item-name';
+    nameEl.textContent = item.name;
+
+    const priceEl = document.createElement('div');
+    priceEl.className = 'cart-item-price';
+    priceEl.textContent = priceLabel;
+
+    info.append(nameEl, priceEl);
+
+    [illustration, info].forEach((el) => {
+        el.addEventListener('click', () => goToProduct(item.name, item.price));
+    });
+
+    const fragment = document.createDocumentFragment();
+    fragment.append(illustration, info);
+    return fragment;
+}
+
+function makeIconButton(className, label, symbol) {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = className;
+    btn.setAttribute('aria-label', label);
+    btn.textContent = symbol;
+    return btn;
+}
+
 /* ---------- Cart ---------- */
 
 function getCart() {
@@ -206,47 +250,46 @@ function renderCartPage() {
 
         cart.forEach((item) => {
             total += item.price * item.qty;
-            const icon = PRODUCT_ICONS[item.name];
 
             const row = document.createElement('div');
             row.className = 'cart-item';
-            row.innerHTML = `
-                <div class="cart-item-illustration" style="background:${icon ? icon.bg : '#eee'};color:${icon ? icon.color : '#999'}">
-                    <svg viewBox="0 0 100 100">${icon ? icon.svg : ''}</svg>
-                </div>
-                <div class="cart-item-info">
-                    <div class="cart-item-name">${item.name}</div>
-                    <div class="cart-item-price">$${item.price.toFixed(2)} each</div>
-                </div>
-                <div class="qty-controls">
-                    <button class="qty-btn" data-action="dec" aria-label="Decrease quantity">&minus;</button>
-                    <span class="qty-value">${item.qty}</span>
-                    <button class="qty-btn" data-action="inc" aria-label="Increase quantity">+</button>
-                </div>
-                <div class="cart-item-total">$${(item.price * item.qty).toFixed(2)}</div>
-                <button class="remove-btn" aria-label="Remove ${item.name}">&#10005;</button>
-            `;
+            row.appendChild(buildItemMedia(item, '$' + item.price.toFixed(2) + ' each'));
 
-            row.querySelector('[data-action="dec"]').addEventListener('click', () => {
+            const decBtn = makeIconButton('qty-btn', 'Decrease quantity', '−');
+            decBtn.addEventListener('click', () => {
                 setQty(item.name, item.qty - 1);
                 refresh();
             });
-            row.querySelector('[data-action="inc"]').addEventListener('click', () => {
+
+            const qtyValue = document.createElement('span');
+            qtyValue.className = 'qty-value';
+            qtyValue.textContent = item.qty;
+
+            const incBtn = makeIconButton('qty-btn', 'Increase quantity', '+');
+            incBtn.addEventListener('click', () => {
                 setQty(item.name, item.qty + 1);
                 refresh();
             });
-            row.querySelector('.remove-btn').addEventListener('click', () => {
+
+            const qtyControls = document.createElement('div');
+            qtyControls.className = 'qty-controls';
+            qtyControls.append(decBtn, qtyValue, incBtn);
+
+            const lineTotal = document.createElement('div');
+            lineTotal.className = 'cart-item-total';
+            lineTotal.textContent = '$' + (item.price * item.qty).toFixed(2);
+
+            const removeBtn = makeIconButton('remove-btn', 'Remove ' + item.name, '✕');
+            removeBtn.addEventListener('click', () => {
                 removeFromCart(item.name);
                 refresh();
             });
-            row.querySelectorAll('.cart-item-illustration, .cart-item-info').forEach((el) => {
-                el.addEventListener('click', () => goToProduct(item.name, item.price));
-            });
 
+            row.append(qtyControls, lineTotal, removeBtn);
             container.appendChild(row);
         });
 
-        totalEl.textContent = '$' + total.toFixed(2);
+        if (totalEl) totalEl.textContent = '$' + total.toFixed(2);
     }
 
     refresh();
@@ -268,30 +311,26 @@ function renderWishlistPage() {
         }
 
         list.forEach((item) => {
-            const icon = PRODUCT_ICONS[item.name];
-
             const row = document.createElement('div');
             row.className = 'cart-item';
-            row.innerHTML = `
-                <div class="cart-item-illustration" style="background:${icon ? icon.bg : '#eee'};color:${icon ? icon.color : '#999'}">
-                    <svg viewBox="0 0 100 100">${icon ? icon.svg : ''}</svg>
-                </div>
-                <div class="cart-item-info">
-                    <div class="cart-item-name">${item.name}</div>
-                    <div class="cart-item-price">$${item.price.toFixed(2)}</div>
-                </div>
-                <button class="btn btn-primary add-cart-btn" data-name="${item.name}" data-price="${item.price}">Add to cart</button>
-                <button class="remove-btn" aria-label="Remove ${item.name}">&#10005;</button>
-            `;
+            row.appendChild(buildItemMedia(item, '$' + item.price.toFixed(2)));
 
-            row.querySelector('.remove-btn').addEventListener('click', () => {
+            // dataset assignment sets the attribute value directly, so a name
+            // containing quotes or markup cannot break out of the attribute
+            const addBtn = document.createElement('button');
+            addBtn.type = 'button';
+            addBtn.className = 'btn btn-primary add-cart-btn';
+            addBtn.dataset.name = item.name;
+            addBtn.dataset.price = item.price;
+            addBtn.textContent = 'Add to cart';
+
+            const removeBtn = makeIconButton('remove-btn', 'Remove ' + item.name, '✕');
+            removeBtn.addEventListener('click', () => {
                 removeFromWishlist(item.name);
                 refresh();
             });
-            row.querySelectorAll('.cart-item-illustration, .cart-item-info').forEach((el) => {
-                el.addEventListener('click', () => goToProduct(item.name, item.price));
-            });
 
+            row.append(addBtn, removeBtn);
             container.appendChild(row);
         });
 
