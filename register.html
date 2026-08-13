@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Create account</title>
+    <link rel="stylesheet" href="css_main.css">
+</head>
+
+<body>
+
+    <header>
+        <div class="header-left">
+            <button type="button" class="back-btn" onclick="history.back()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5M11 18l-6-6 6-6"/></svg>
+                Back
+            </button>
+            <a href="index.html" class="back-btn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/></svg>
+                Home
+            </a>
+            <a href="products.html" class="back-btn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+                Shop
+            </a>
+        </div>
+    </header>
+
+    <main>
+        <div class="auth-page">
+            <div class="profile-card">
+                <h1>Create account</h1>
+
+                <form id="registerForm" novalidate>
+                    <div class="form-field">
+                        <label for="regName">Name</label>
+                        <input type="text" id="regName" autocomplete="name" placeholder="Your name">
+                    </div>
+                    <div class="form-field">
+                        <label for="regEmail">Email</label>
+                        <input type="email" id="regEmail" autocomplete="email" required>
+                    </div>
+                    <div class="form-field">
+                        <label for="regPhone">Phone <span class="field-hint">(optional)</span></label>
+                        <input type="tel" id="regPhone" autocomplete="tel" placeholder="+380 00 000 0000">
+                    </div>
+                    <div class="form-field">
+                        <label for="regPassword">Password</label>
+                        <input type="password" id="regPassword" autocomplete="new-password" required>
+                        <span class="field-hint">At least 8 characters.</span>
+                    </div>
+
+                    <p class="form-error" id="registerError" role="alert"></p>
+
+                    <button type="submit" class="btn btn-buy" id="registerSubmit">Create account</button>
+                </form>
+
+                <p class="auth-switch">
+                    Already have an account? <a href="login.html">Sign in</a>
+                </p>
+            </div>
+        </div>
+    </main>
+
+    <script src="auth.js"></script>
+    <script>
+        const form = document.getElementById('registerForm');
+        const errorEl = document.getElementById('registerError');
+        const submitBtn = document.getElementById('registerSubmit');
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            errorEl.textContent = '';
+
+            const password = document.getElementById('regPassword').value;
+            if (password.length < 8) {
+                errorEl.textContent = 'Password must be at least 8 characters';
+                return;
+            }
+
+            submitBtn.disabled = true;
+
+            try {
+                await Auth.register({
+                    name: document.getElementById('regName').value.trim(),
+                    email: document.getElementById('regEmail').value.trim(),
+                    phone: document.getElementById('regPhone').value.trim(),
+                    password: password
+                });
+                window.location.href = 'account.html';
+            } catch (err) {
+                errorEl.textContent = err.message;
+                submitBtn.disabled = false;
+            }
+        });
+    </script>
+
+</body>
+
+</html>
