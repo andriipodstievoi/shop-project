@@ -56,3 +56,45 @@ CREATE TABLE IF NOT EXISTS wishlist_items (
 ) ENGINE = InnoDB
   DEFAULT CHARSET = utf8mb4
   COLLATE = utf8mb4_unicode_ci;
+
+-- Orders keep their own copy of the contact details, so the shop still knows
+-- where an order was going even if the account is later removed.
+CREATE TABLE IF NOT EXISTS orders (
+    id            INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    -- Nullable: deleting an account must not erase the shop's order history
+    user_id       INT UNSIGNED NULL,
+    contact_name  VARCHAR(120) NOT NULL,
+    contact_email VARCHAR(255) NOT NULL,
+    contact_phone VARCHAR(40)  NOT NULL DEFAULT '',
+    address       VARCHAR(500) NOT NULL,
+    -- DECIMAL, not FLOAT: money must not accumulate binary rounding error
+    total         DECIMAL(10, 2) NOT NULL DEFAULT 0.00,
+    status        ENUM('new', 'processing', 'shipped', 'completed', 'cancelled')
+                  NOT NULL DEFAULT 'new',
+    created_at    TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at    TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    KEY idx_orders_user (user_id),
+    KEY idx_orders_status (status),
+    CONSTRAINT fk_orders_user FOREIGN KEY (user_id)
+        REFERENCES users (id) ON DELETE SET NULL
+) ENGINE = InnoDB
+  DEFAULT CHARSET = utf8mb4
+  COLLATE = utf8mb4_unicode_ci;
+
+-- Name and price are copied in at checkout. A later price change in
+-- products.json must never rewrite what a customer already paid.
+CREATE TABLE IF NOT EXISTS order_items (
+    id           INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    order_id     INT UNSIGNED NOT NULL,
+    product_id   VARCHAR(64)  NOT NULL,
+    product_name VARCHAR(200) NOT NULL,
+    unit_price   DECIMAL(10, 2) NOT NULL,
+    qty          INT UNSIGNED NOT NULL,
+    PRIMARY KEY (id),
+    KEY idx_order_items_order (order_id),
+    CONSTRAINT fk_order_items_order FOREIGN KEY (order_id)
+        REFERENCES orders (id) ON DELETE CASCADE
+) ENGINE = InnoDB
+  DEFAULT CHARSET = utf8mb4
+  COLLATE = utf8mb4_unicode_ci;

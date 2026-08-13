@@ -93,6 +93,16 @@ function require_login(): array
     return $user;
 }
 
+// Hiding the admin link in the UI is cosmetic; this is the actual gate.
+function require_admin(): array
+{
+    $user = require_login();
+    if (($user['role'] ?? '') !== 'admin') {
+        json_error('Admin access required', 403);
+    }
+    return $user;
+}
+
 function login_user(int $userId): void
 {
     start_session();

@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Checkout</title>
+    <link rel="stylesheet" href="css_main.css">
+</head>
+
+<body>
+
+    <header>
+        <div class="header-left">
+            <button type="button" class="back-btn" onclick="history.back()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5M11 18l-6-6 6-6"/></svg>
+                Back
+            </button>
+            <a href="index.html" class="back-btn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/></svg>
+                Home
+            </a>
+            <a href="products.html" class="back-btn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+                Shop
+            </a>
+        </div>
+    </header>
+
+    <main>
+        <div class="cart-page">
+            <h1>Checkout</h1>
+
+            <p id="checkoutLoading" class="account-loading">Loading…</p>
+
+            <!-- Not signed in -->
+            <section class="profile-card" id="checkoutSignedOut" hidden>
+                <p>You need an account to place an order, so you can track it afterwards.</p>
+                <div class="profile-actions">
+                    <a href="login.html" class="btn btn-buy">Sign in</a>
+                    <a href="register.html" class="btn btn-outline">Create account</a>
+                </div>
+            </section>
+
+            <div id="checkoutArea" hidden>
+                <div id="checkoutItems"></div>
+
+                <div class="cart-summary">
+                    <span>Total</span>
+                    <span id="checkoutTotal">$0.00</span>
+                </div>
+
+                <section class="profile-card checkout-form">
+                    <h2>Delivery details</h2>
+                    <form id="checkoutForm">
+                        <div class="form-field">
+                            <label for="contactName">Full name</label>
+                            <input type="text" id="contactName" required>
+                        </div>
+                        <div class="form-field">
+                            <label for="contactPhone">Phone</label>
+                            <input type="tel" id="contactPhone" placeholder="+380 00 000 0000">
+                        </div>
+                        <div class="form-field">
+                            <label for="address">Delivery address</label>
+                            <textarea id="address" rows="3" required placeholder="Street, building, city, postal code"></textarea>
+                        </div>
+
+                        <p class="field-hint">
+                            No online payment: we contact you to confirm the order and arrange payment.
+                        </p>
+
+                        <p class="form-error" id="checkoutError" role="alert"></p>
+
+                        <button type="submit" class="btn btn-buy" id="placeOrderBtn">Place order</button>
+                    </form>
+                </section>
+            </div>
+
+            <!-- Success -->
+            <section class="profile-card order-success" id="orderSuccess" hidden>
+                <h2>Order placed</h2>
+                <p id="orderSuccessText"></p>
+                <div class="profile-actions">
+                    <a href="orders.html" class="btn btn-buy">View my orders</a>
+                    <a href="products.html" class="btn btn-outline">Keep shopping</a>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <script src="auth.js"></script>
+    <script src="cart.js"></script>
+    <script>
+        (async () => {
+            const loading = document.getElementById('checkoutLoading');
+            const signedOut = document.getElementById('checkoutSignedOut');
+            const area = document.getElementById('checkoutArea');
+            const success = document.getElementById('orderSuccess');
+
+            await loadCatalog();
+            const user = await Auth.load();
+            loading.hidden = true;
+
+            if (!user) {
+                signedOut.hidden = false;
+                return;
+            }
+
+            const cart = await Store.cart();
+            if (cart.length === 0) {
+                const empty = document.createElement('p');
+                empty.className = 'cart-empty';
+                empty.textContent = 'Your cart is empty. ';
+                const link = document.createElement('a');
+                link.href = 'products.html';
+                link.textContent = 'Browse products';
+                empty.appendChild(link);
+                document.querySelector('.cart-page').appendChild(empty);
+                return;
+            }
+
+            area.hidden = false;
+
+            // Order summary, priced from the catalog
+            const itemsEl = document.getElementById('checkoutItems');
+            let total = 0;
+            cart.forEach((item) => {
+                const product = getProduct(item.id);
+                if (!product) return;
+                total += product.price * item.qty;
+
+                const row = document.createElement('div');
+                row.className = 'cart-item';
+                row.appendChild(buildItemMedia(product, formatPrice(product.price) + ' each'));
+
+                const qty = document.createElement('div');
+                qty.className = 'qty-value';
+                qty.textContent = '×' + item.qty;
+
+                const lineTotal = document.createElement('div');
+                lineTotal.className = 'cart-item-total';
+                lineTotal.textContent = formatPrice(product.price * item.qty);
+
+                row.append(qty, lineTotal);
+                itemsEl.appendChild(row);
+            });
+            document.getElementById('checkoutTotal').textContent = formatPrice(total);
+
+            // Prefill from the saved profile
+            document.getElementById('contactName').value = user.name || '';
+            document.getElementById('contactPhone').value = user.phone || '';
+
+            const form = document.getElementById('checkoutForm');
+            const errorEl = document.getElementById('checkoutError');
+            const btn = document.getElementById('placeOrderBtn');
+
+            form.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                errorEl.textContent = '';
+                btn.disabled = true;
+
+                try {
+                    const data = await Auth.post('api/orders.php', {
+                        action: 'create',
+                        contact_name: document.getElementById('contactName').value.trim(),
+                        contact_phone: document.getElementById('contactPhone').value.trim(),
+                        address: document.getElementById('address').value.trim()
+                    });
+
+                    area.hidden = true;
+                    success.hidden = false;
+                    document.getElementById('orderSuccessText').textContent =
+                        'Order #' + data.order.id + ' for ' + formatPrice(data.order.total) +
+                        ' has been received. We will contact you to confirm it.';
+                    await updateCartBadge();
+                } catch (err) {
+                    errorEl.textContent = err.message;
+                    btn.disabled = false;
+                }
+            });
+        })();
+    </script>
+
+</body>
+
+</html>

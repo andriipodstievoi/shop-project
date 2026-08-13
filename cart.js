@@ -347,6 +347,7 @@ async function renderCartPage() {
     const totalEl = document.getElementById('cartTotal');
     const summaryEl = document.getElementById('cartSummary');
     const continueEl = document.getElementById('cartContinueLink');
+    const actionsEl = document.getElementById('cartActions');
 
     async function refresh() {
         const cart = await Store.cart();
@@ -356,11 +357,13 @@ async function renderCartPage() {
             renderEmptyState(container, 'Your cart is empty.');
             if (summaryEl) summaryEl.style.display = 'none';
             if (continueEl) continueEl.style.display = 'none';
+            if (actionsEl) actionsEl.style.display = 'none';
             return;
         }
 
         if (summaryEl) summaryEl.style.display = 'flex';
         if (continueEl) continueEl.style.display = 'block';
+        if (actionsEl) actionsEl.style.display = 'flex';
 
         let total = 0;
 
