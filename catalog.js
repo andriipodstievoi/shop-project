@@ -1,8 +1,11 @@
 // Amazon-style catalog grid for products.html: renders cards from the PRODUCTS
 // catalog in cart.js and filters them by search text, category and sort order.
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
     const grid = document.getElementById('catalogGrid');
     if (!grid) return;
+
+    // PRODUCTS is fetched from products.json by cart.js
+    await loadCatalog();
 
     const searchInput = document.getElementById('catalogSearch');
     const searchForm = document.getElementById('catalogSearchForm');

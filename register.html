@@ -64,6 +64,7 @@
     </main>
 
     <script src="auth.js"></script>
+    <script src="cart.js"></script>
     <script>
         const form = document.getElementById('registerForm');
         const errorEl = document.getElementById('registerError');
@@ -88,6 +89,8 @@
                     phone: document.getElementById('regPhone').value.trim(),
                     password: password
                 });
+                // Anything collected while signed out follows the visitor in
+                await Store.mergeGuestIntoAccount();
                 window.location.href = 'account.html';
             } catch (err) {
                 errorEl.textContent = err.message;

@@ -1,105 +1,42 @@
-// Shared product catalog + cart/wishlist/profile storage, used by every page.
-// The catalog below is the single source of truth: pages render from it, the
-// cart stores only ids, and prices are always looked up here rather than taken
-// from the URL, so a crafted link cannot invent a price.
-// The profile now lives in the database (see api/me.php); only the cart and
-// wishlist are still browser-local, until stage 2 moves them server-side too.
+// Catalog loading + cart/wishlist storage.
+//
+// Storage has two backends. A signed-in visitor reads and writes the database
+// through /api, so the cart follows them between devices. A signed-out visitor
+// keeps working against localStorage, and that guest data is folded into the
+// account on sign-in (see Store.mergeGuestIntoAccount).
 const CART_KEY = 'shop_cart';
 const WISHLIST_KEY = 'shop_wishlist';
 
-const PRODUCTS = [
-    {
-        id: 'nebula-hoodie',
-        name: 'Nebula Hoodie',
-        price: 68.00,
-        category: 'Outerwear',
-        rating: 4.6,
-        reviews: 214,
-        blurb: 'A heavyweight fleece hoodie with a brushed interior, dropped shoulders, and a kangaroo pocket. Built for cold mornings.',
-        icon: {
-            color: '#6d28d9',
-            bg: 'radial-gradient(circle, #ede9fe, #c4b5fd)',
-            svg: '<path fill="currentColor" d="M30 26 Q50 6 70 26 L70 34 Q50 24 30 34 Z"/><rect x="30" y="30" width="40" height="55" rx="10" fill="currentColor"/><rect x="10" y="34" width="18" height="34" rx="8" fill="currentColor" transform="rotate(-15 19 51)"/><rect x="72" y="34" width="18" height="34" rx="8" fill="currentColor" transform="rotate(15 81 51)"/><rect x="40" y="60" width="20" height="14" rx="4" fill="rgba(0,0,0,0.15)"/><circle cx="45" cy="34" r="2" fill="rgba(0,0,0,0.25)"/><circle cx="55" cy="34" r="2" fill="rgba(0,0,0,0.25)"/>'
-        }
-    },
-    {
-        id: 'solstice-sneakers',
-        name: 'Solstice Sneakers',
-        price: 92.00,
-        category: 'Footwear',
-        rating: 4.4,
-        reviews: 168,
-        blurb: 'Lightweight everyday sneakers with a breathable knit upper and a cushioned sole made for standing all day.',
-        icon: {
-            color: '#c2410c',
-            bg: 'radial-gradient(circle, #ffedd5, #fdba74)',
-            svg: '<path fill="currentColor" d="M12 66 Q12 54 24 52 L50 44 Q62 40 72 46 L86 54 Q92 57 92 64 L92 70 Q92 74 88 74 L18 74 Q12 74 12 68 Z"/><rect x="12" y="70" width="80" height="8" rx="4" fill="rgba(0,0,0,0.2)"/><path fill="rgba(0,0,0,0.15)" d="M24 52 L50 44 Q54 50 50 56 L28 62 Z"/>'
-        }
-    },
-    {
-        id: 'aurora-backpack',
-        name: 'Aurora Backpack',
-        price: 54.00,
-        category: 'Accessories',
-        rating: 4.7,
-        reviews: 302,
-        blurb: 'A 20L daypack with a padded laptop sleeve, water-resistant shell, and enough pockets to keep you organized.',
-        icon: {
-            color: '#0f766e',
-            bg: 'radial-gradient(circle, #ccfbf1, #5eead4)',
-            svg: '<rect x="28" y="26" width="44" height="58" rx="16" fill="currentColor"/><path d="M38 26 Q38 12 50 12 Q62 12 62 26" fill="none" stroke="currentColor" stroke-width="7" stroke-linecap="round"/><rect x="36" y="38" width="28" height="18" rx="5" fill="rgba(0,0,0,0.18)"/><rect x="42" y="62" width="16" height="16" rx="4" fill="rgba(0,0,0,0.12)"/>'
-        }
-    },
-    {
-        id: 'meridian-chinos',
-        name: 'Meridian Chinos',
-        price: 58.00,
-        category: 'Bottoms',
-        rating: 4.3,
-        reviews: 97,
-        blurb: 'Straight-leg cotton chinos with a touch of stretch, a clean tapered ankle, and pockets that actually hold a phone.',
-        icon: {
-            color: '#92400e',
-            bg: 'radial-gradient(circle, #fef3c7, #fcd34d)',
-            svg: '<rect x="30" y="16" width="40" height="10" rx="2" fill="currentColor"/><path fill="currentColor" d="M30 26 h18 l-3 58 h-13 z"/><path fill="currentColor" d="M52 26 h18 l-2 58 h-13 z"/><rect x="30" y="26" width="40" height="4" fill="rgba(0,0,0,0.15)"/><rect x="47" y="26" width="6" height="15" fill="rgba(0,0,0,0.1)"/>'
-        }
-    },
-    {
-        id: 'cloudstep-socks',
-        name: 'Cloudstep Socks (3-pack)',
-        price: 14.00,
-        category: 'Socks',
-        rating: 4.8,
-        reviews: 421,
-        blurb: 'Cushioned combed-cotton crew socks with a reinforced heel and a ribbed cuff that stays up all day.',
-        icon: {
-            color: '#9f1239',
-            bg: 'radial-gradient(circle, #ffe4e6, #fda4af)',
-            svg: '<path fill="currentColor" d="M40 16 H60 V56 H72 A11 11 0 0 1 72 78 H50 A10 10 0 0 1 40 68 Z"/><rect x="40" y="16" width="20" height="7" fill="rgba(0,0,0,0.2)"/><rect x="40" y="60" width="12" height="5" fill="rgba(0,0,0,0.12)"/>'
-        }
-    },
-    {
-        id: 'everyday-boxer-briefs',
-        name: 'Everyday Boxer Briefs (2-pack)',
-        price: 22.00,
-        category: 'Underwear',
-        rating: 4.5,
-        reviews: 256,
-        blurb: 'Breathable modal-blend boxer briefs with a soft waistband and a no-ride-up leg that stays put.',
-        icon: {
-            color: '#1e40af',
-            bg: 'radial-gradient(circle, #dbeafe, #93c5fd)',
-            svg: '<rect x="28" y="28" width="44" height="9" rx="2" fill="currentColor"/><path fill="currentColor" d="M28 37 H72 L69 58 Q66 70 56 70 Q50 70 50 61 Q50 70 44 70 Q34 70 31 58 Z"/><rect x="28" y="37" width="44" height="3" fill="rgba(0,0,0,0.15)"/>'
-        }
-    }
-];
+let PRODUCTS = [];
+let productsById = {};
+let catalogPromise = null;
 
-function getProduct(id) {
-    return PRODUCTS.find((p) => p.id === id) || null;
+// products.json is shared with the PHP API, so both sides agree on ids/prices
+function loadCatalog() {
+    if (!catalogPromise) {
+        catalogPromise = fetch('products.json')
+            .then((res) => {
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                return res.json();
+            })
+            .then((list) => {
+                PRODUCTS = Array.isArray(list) ? list : [];
+                productsById = {};
+                PRODUCTS.forEach((p) => { productsById[p.id] = p; });
+                return PRODUCTS;
+            })
+            .catch((err) => {
+                console.error('Could not load products.json:', err.message);
+                PRODUCTS = [];
+                productsById = {};
+                return PRODUCTS;
+            });
+    }
+    return catalogPromise;
 }
 
-function findProductByName(name) {
-    return PRODUCTS.find((p) => p.name === name) || null;
+function getProduct(id) {
+    return productsById[id] || null;
 }
 
 function goToProduct(id) {
@@ -110,7 +47,7 @@ function formatPrice(value) {
     return '$' + value.toFixed(2);
 }
 
-/* ---------- Storage helpers ---------- */
+/* ---------- Guest storage (localStorage) ---------- */
 
 function readJSON(key, fallback) {
     try {
@@ -121,148 +58,237 @@ function readJSON(key, fallback) {
     }
 }
 
-// Entries used to be stored as {name, price, qty}. Anything still in that shape
-// is resolved back to a catalog id; unknown products are dropped.
+// Cart entries were once {name, price, qty}; those are resolved back to ids.
 function normalizeCartEntry(entry) {
     if (!entry || typeof entry !== 'object') return null;
     const qty = Number.isFinite(entry.qty) && entry.qty > 0 ? Math.floor(entry.qty) : 1;
     if (entry.id && getProduct(entry.id)) return { id: entry.id, qty };
-    const legacy = entry.name ? findProductByName(entry.name) : null;
+    const legacy = entry.name ? PRODUCTS.find((p) => p.name === entry.name) : null;
     return legacy ? { id: legacy.id, qty } : null;
 }
 
 function normalizeWishlistEntry(entry) {
     if (typeof entry === 'string') return getProduct(entry) ? entry : null;
     if (entry && entry.id && getProduct(entry.id)) return entry.id;
-    const legacy = entry && entry.name ? findProductByName(entry.name) : null;
+    const legacy = entry && entry.name ? PRODUCTS.find((p) => p.name === entry.name) : null;
     return legacy ? legacy.id : null;
 }
 
-/* ---------- Cart ---------- */
-
-function getCart() {
+function guestCart() {
     const raw = readJSON(CART_KEY, []);
-    if (!Array.isArray(raw)) return [];
-    return raw.map(normalizeCartEntry).filter(Boolean);
+    return Array.isArray(raw) ? raw.map(normalizeCartEntry).filter(Boolean) : [];
 }
 
-function saveCart(cart) {
-    localStorage.setItem(CART_KEY, JSON.stringify(cart));
-    updateCartBadge();
+function saveGuestCart(items) {
+    localStorage.setItem(CART_KEY, JSON.stringify(items));
 }
 
-function addToCart(id) {
-    if (!getProduct(id)) return;
-    const cart = getCart();
-    const existing = cart.find((item) => item.id === id);
-    if (existing) {
-        existing.qty += 1;
-    } else {
-        cart.push({ id, qty: 1 });
+function guestWishlist() {
+    const raw = readJSON(WISHLIST_KEY, []);
+    return Array.isArray(raw) ? raw.map(normalizeWishlistEntry).filter(Boolean) : [];
+}
+
+function saveGuestWishlist(ids) {
+    localStorage.setItem(WISHLIST_KEY, JSON.stringify(ids));
+}
+
+/* ---------- Storage facade ---------- */
+
+const Store = {
+    async signedIn() {
+        if (typeof Auth === 'undefined') return false;
+        await Auth.load();
+        return Auth.isLoggedIn();
+    },
+
+    async cart() {
+        if (await Store.signedIn()) {
+            try {
+                const data = await Auth.get('api/cart.php');
+                return data.items || [];
+            } catch (err) {
+                console.error('Cart load failed:', err.message);
+                return [];
+            }
+        }
+        return guestCart();
+    },
+
+    async addToCart(id) {
+        if (!getProduct(id)) return;
+        if (await Store.signedIn()) {
+            await Auth.post('api/cart.php', { action: 'add', product_id: id });
+        } else {
+            const items = guestCart();
+            const existing = items.find((i) => i.id === id);
+            if (existing) {
+                existing.qty = Math.min(existing.qty + 1, 99);
+            } else {
+                items.push({ id, qty: 1 });
+            }
+            saveGuestCart(items);
+        }
+        await updateCartBadge();
+    },
+
+    async setQty(id, qty) {
+        if (await Store.signedIn()) {
+            await Auth.post('api/cart.php', { action: 'set', product_id: id, qty });
+        } else if (qty <= 0) {
+            saveGuestCart(guestCart().filter((i) => i.id !== id));
+        } else {
+            const items = guestCart();
+            const item = items.find((i) => i.id === id);
+            if (item) {
+                item.qty = Math.min(qty, 99);
+                saveGuestCart(items);
+            }
+        }
+        await updateCartBadge();
+    },
+
+    async removeFromCart(id) {
+        if (await Store.signedIn()) {
+            await Auth.post('api/cart.php', { action: 'remove', product_id: id });
+        } else {
+            saveGuestCart(guestCart().filter((i) => i.id !== id));
+        }
+        await updateCartBadge();
+    },
+
+    async wishlist() {
+        if (await Store.signedIn()) {
+            try {
+                const data = await Auth.get('api/wishlist.php');
+                return data.items || [];
+            } catch (err) {
+                console.error('Wishlist load failed:', err.message);
+                return [];
+            }
+        }
+        return guestWishlist();
+    },
+
+    async toggleWishlist(id) {
+        if (!getProduct(id)) return false;
+        if (await Store.signedIn()) {
+            const data = await Auth.post('api/wishlist.php', { action: 'toggle', product_id: id });
+            return (data.items || []).includes(id);
+        }
+        const list = guestWishlist();
+        const idx = list.indexOf(id);
+        if (idx > -1) {
+            list.splice(idx, 1);
+        } else {
+            list.push(id);
+        }
+        saveGuestWishlist(list);
+        return idx === -1;
+    },
+
+    async removeFromWishlist(id) {
+        if (await Store.signedIn()) {
+            await Auth.post('api/wishlist.php', { action: 'remove', product_id: id });
+        } else {
+            saveGuestWishlist(guestWishlist().filter((entry) => entry !== id));
+        }
+    },
+
+    // Called right after sign-in/registration: whatever the visitor collected
+    // while signed out is added to the account, then the local copy is cleared
+    // so it cannot be merged twice.
+    async mergeGuestIntoAccount() {
+        await loadCatalog();
+        const items = guestCart();
+        const wishes = guestWishlist();
+
+        try {
+            if (items.length) {
+                await Auth.post('api/cart.php', { action: 'merge', items });
+            }
+            if (wishes.length) {
+                await Auth.post('api/wishlist.php', { action: 'merge', items: wishes });
+            }
+        } catch (err) {
+            console.error('Merge failed:', err.message);
+            return;
+        }
+
+        localStorage.removeItem(CART_KEY);
+        localStorage.removeItem(WISHLIST_KEY);
     }
-    saveCart(cart);
-}
+};
 
-function removeFromCart(id) {
-    saveCart(getCart().filter((item) => item.id !== id));
-}
+/* ---------- Badge ---------- */
 
-function setQty(id, qty) {
-    if (qty <= 0) {
-        removeFromCart(id);
-        return;
-    }
-    const cart = getCart();
-    const item = cart.find((i) => i.id === id);
-    if (item) {
-        item.qty = qty;
-        saveCart(cart);
-    }
-}
-
-function cartCount() {
-    return getCart().reduce((sum, item) => sum + item.qty, 0);
-}
-
-function updateCartBadge() {
-    const count = cartCount();
-    document.querySelectorAll('.cart-badge').forEach((badge) => {
+async function updateCartBadge() {
+    const badges = document.querySelectorAll('.cart-badge');
+    if (!badges.length) return;
+    const items = await Store.cart();
+    const count = items.reduce((sum, item) => sum + item.qty, 0);
+    badges.forEach((badge) => {
         badge.textContent = count;
         badge.style.display = count > 0 ? 'flex' : 'none';
     });
 }
 
+/* ---------- Button wiring ---------- */
+
 function initAddToCartButtons(root = document) {
     root.querySelectorAll('.add-cart-btn').forEach((btn) => {
-        btn.addEventListener('click', (e) => {
+        btn.addEventListener('click', async (e) => {
             e.stopPropagation();
-            addToCart(btn.dataset.id);
             const original = btn.innerHTML;
-            btn.classList.add('added');
-            btn.textContent = 'Added ✓';
+            btn.disabled = true;
+            try {
+                await Store.addToCart(btn.dataset.id);
+                btn.classList.add('added');
+                btn.textContent = 'Added ✓';
+            } catch (err) {
+                btn.textContent = 'Failed';
+                console.error(err);
+            }
             setTimeout(() => {
                 btn.classList.remove('added');
                 btn.innerHTML = original;
+                btn.disabled = false;
             }, 900);
         });
     });
 }
 
-/* ---------- Wishlist ---------- */
+async function initWishlistButtons(root = document) {
+    const buttons = root.querySelectorAll('.wishlist-btn');
+    if (!buttons.length) return;
 
-function getWishlist() {
-    const raw = readJSON(WISHLIST_KEY, []);
-    if (!Array.isArray(raw)) return [];
-    return raw.map(normalizeWishlistEntry).filter(Boolean);
-}
+    const list = await Store.wishlist();
 
-function saveWishlist(ids) {
-    localStorage.setItem(WISHLIST_KEY, JSON.stringify(ids));
-}
-
-function isInWishlist(id) {
-    return getWishlist().includes(id);
-}
-
-function toggleWishlist(id) {
-    if (!getProduct(id)) return false;
-    const list = getWishlist();
-    const idx = list.indexOf(id);
-    if (idx > -1) {
-        list.splice(idx, 1);
-    } else {
-        list.push(id);
-    }
-    saveWishlist(list);
-    return idx === -1;
-}
-
-function removeFromWishlist(id) {
-    saveWishlist(getWishlist().filter((entry) => entry !== id));
-}
-
-function initWishlistButtons(root = document) {
-    root.querySelectorAll('.wishlist-btn').forEach((btn) => {
+    buttons.forEach((btn) => {
         const id = btn.dataset.id;
-        const active = isInWishlist(id);
+        const active = list.includes(id);
         btn.classList.toggle('active', active);
         btn.setAttribute('aria-pressed', String(active));
         btn.setAttribute('aria-label', (active ? 'Remove from' : 'Add to') + ' wishlist');
 
-        btn.addEventListener('click', (e) => {
+        btn.addEventListener('click', async (e) => {
             e.stopPropagation();
-            const nowIn = toggleWishlist(id);
-            btn.classList.toggle('active', nowIn);
-            btn.setAttribute('aria-pressed', String(nowIn));
-            btn.setAttribute('aria-label', (nowIn ? 'Remove from' : 'Add to') + ' wishlist');
+            btn.disabled = true;
+            try {
+                const nowIn = await Store.toggleWishlist(id);
+                btn.classList.toggle('active', nowIn);
+                btn.setAttribute('aria-pressed', String(nowIn));
+                btn.setAttribute('aria-label', (nowIn ? 'Remove from' : 'Add to') + ' wishlist');
+            } catch (err) {
+                console.error(err);
+            }
+            btn.disabled = false;
         });
     });
 }
 
 /* ---------- Shared row pieces ---------- */
 
-// Product text always goes through textContent; only our own catalog SVG is
-// assigned as markup.
+// Only our own catalog SVG is assigned as markup; text uses textContent.
 function buildItemMedia(product, priceLabel) {
     const illustration = document.createElement('div');
     illustration.className = 'cart-item-illustration';
@@ -312,9 +338,9 @@ function renderEmptyState(container, message) {
     container.appendChild(p);
 }
 
-/* ---------- Cart page rendering ---------- */
+/* ---------- Cart page ---------- */
 
-function renderCartPage() {
+async function renderCartPage() {
     const container = document.getElementById('cartItems');
     if (!container) return;
 
@@ -322,8 +348,8 @@ function renderCartPage() {
     const summaryEl = document.getElementById('cartSummary');
     const continueEl = document.getElementById('cartContinueLink');
 
-    function refresh() {
-        const cart = getCart();
+    async function refresh() {
+        const cart = await Store.cart();
         container.innerHTML = '';
 
         if (cart.length === 0) {
@@ -348,9 +374,9 @@ function renderCartPage() {
             row.appendChild(buildItemMedia(product, formatPrice(product.price) + ' each'));
 
             const decBtn = makeIconButton('qty-btn', 'Decrease quantity', '−');
-            decBtn.addEventListener('click', () => {
-                setQty(item.id, item.qty - 1);
-                refresh();
+            decBtn.addEventListener('click', async () => {
+                await Store.setQty(item.id, item.qty - 1);
+                await refresh();
             });
 
             const qtyValue = document.createElement('span');
@@ -358,9 +384,9 @@ function renderCartPage() {
             qtyValue.textContent = item.qty;
 
             const incBtn = makeIconButton('qty-btn', 'Increase quantity', '+');
-            incBtn.addEventListener('click', () => {
-                setQty(item.id, item.qty + 1);
-                refresh();
+            incBtn.addEventListener('click', async () => {
+                await Store.setQty(item.id, item.qty + 1);
+                await refresh();
             });
 
             const qtyControls = document.createElement('div');
@@ -372,9 +398,9 @@ function renderCartPage() {
             lineTotal.textContent = formatPrice(product.price * item.qty);
 
             const removeBtn = makeIconButton('remove-btn', 'Remove ' + product.name, '✕');
-            removeBtn.addEventListener('click', () => {
-                removeFromCart(item.id);
-                refresh();
+            removeBtn.addEventListener('click', async () => {
+                await Store.removeFromCart(item.id);
+                await refresh();
             });
 
             row.append(qtyControls, lineTotal, removeBtn);
@@ -384,17 +410,17 @@ function renderCartPage() {
         if (totalEl) totalEl.textContent = formatPrice(total);
     }
 
-    refresh();
+    await refresh();
 }
 
-/* ---------- Wishlist page rendering ---------- */
+/* ---------- Wishlist page ---------- */
 
-function renderWishlistPage() {
+async function renderWishlistPage() {
     const container = document.getElementById('wishlistItems');
     if (!container) return;
 
-    function refresh() {
-        const list = getWishlist();
+    async function refresh() {
+        const list = await Store.wishlist();
         container.innerHTML = '';
 
         if (list.length === 0) {
@@ -417,9 +443,9 @@ function renderWishlistPage() {
             addBtn.textContent = 'Add to cart';
 
             const removeBtn = makeIconButton('remove-btn', 'Remove ' + product.name, '✕');
-            removeBtn.addEventListener('click', () => {
-                removeFromWishlist(product.id);
-                refresh();
+            removeBtn.addEventListener('click', async () => {
+                await Store.removeFromWishlist(product.id);
+                await refresh();
             });
 
             row.append(addBtn, removeBtn);
@@ -429,13 +455,24 @@ function renderWishlistPage() {
         initAddToCartButtons(container);
     }
 
-    refresh();
+    await refresh();
 }
 
-document.addEventListener('DOMContentLoaded', () => {
-    updateCartBadge();
+/* ---------- Sync banner ---------- */
+
+// Tells signed-out visitors why their cart is not following them around.
+async function initSyncNotice() {
+    const notice = document.getElementById('syncNotice');
+    if (!notice) return;
+    notice.hidden = await Store.signedIn();
+}
+
+document.addEventListener('DOMContentLoaded', async () => {
+    await loadCatalog();
+    await updateCartBadge();
     initAddToCartButtons();
-    initWishlistButtons();
-    renderCartPage();
-    renderWishlistPage();
+    await initWishlistButtons();
+    await initSyncNotice();
+    await renderCartPage();
+    await renderWishlistPage();
 });

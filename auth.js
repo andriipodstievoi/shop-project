@@ -61,6 +61,10 @@ const Auth = (() => {
         isLoggedIn: () => currentUser !== null,
         isAdmin: () => currentUser !== null && currentUser.role === 'admin',
 
+        // Exposed so cart.js can reach /api with the current CSRF token
+        get: (url) => request(url),
+        post,
+
         async register(details) {
             await load();
             const data = await post('api/register.php', details);

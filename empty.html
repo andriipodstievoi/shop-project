@@ -49,17 +49,21 @@
         <div class="product-view" id="productView"></div>
     </main>
 
+    <script src="auth.js"></script>
     <script src="cart.js"></script>
     <script>
         // Only the product id travels in the URL; name and price come from the
         // catalog, so a crafted link cannot invent a product or a price.
-        (function () {
+        (async function () {
+            await loadCatalog();
+
             const params = new URLSearchParams(window.location.search);
             let product = getProduct(params.get('id'));
 
             // Older links used ?product=<name>&price=<price>
             if (!product && params.get('product')) {
-                product = findProductByName(params.get('product'));
+                const name = params.get('product');
+                product = PRODUCTS.find((p) => p.name === name) || null;
             }
 
             const view = document.getElementById('productView');
