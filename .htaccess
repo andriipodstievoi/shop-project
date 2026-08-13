@@ -1,0 +1,44 @@
+# Apache rules for shared hosting.
+#
+# Defence in depth: config.php returns an array and prints nothing even when
+# requested directly, but if PHP were ever misconfigured and served as plain
+# text, these rules still keep the database password out of a browser.
+#
+# Each block is wrapped in an IfModule test so the file works on both Apache
+# 2.4 (mod_authz_core) and 2.2. An unguarded "Require" directive would return
+# 500 for the whole site on 2.2.
+
+Options -Indexes
+
+# --- Database credentials ---
+<Files "config.php">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order allow,deny
+        Deny from all
+    </IfModule>
+</Files>
+
+# --- Shared includes, not endpoints ---
+<FilesMatch "^(db|auth|catalog|orders_lib)\.php$">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order allow,deny
+        Deny from all
+    </IfModule>
+</FilesMatch>
+
+# --- Schema and documentation ---
+<FilesMatch "\.(sql|md)$">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order allow,deny
+        Deny from all
+    </IfModule>
+</FilesMatch>

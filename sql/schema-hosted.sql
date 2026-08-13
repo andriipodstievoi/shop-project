@@ -1,12 +1,10 @@
--- Database schema for the shop backend.
--- Import once:  mysql -u root < sql/schema.sql
--- or paste into phpMyAdmin (XAMPP -> http://localhost/phpmyadmin).
+-- Schema for shared hosting (InfinityFree and similar).
+--
+-- Unlike sql/schema.sql this file does NOT create or select a database:
+-- on shared hosting you create it in the control panel, it gets a fixed
+-- name such as if0_12345678_shop, and you import this file INTO it via
+-- phpMyAdmin. Running CREATE DATABASE there would fail on permissions.
 
-CREATE DATABASE IF NOT EXISTS shop_db
-    CHARACTER SET utf8mb4
-    COLLATE utf8mb4_unicode_ci;
-
-USE shop_db;
 
 CREATE TABLE IF NOT EXISTS users (
     id             INT UNSIGNED NOT NULL AUTO_INCREMENT,
