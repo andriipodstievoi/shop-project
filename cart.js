@@ -234,8 +234,19 @@ async function updateCartBadge() {
 
 /* ---------- Button wiring ---------- */
 
+// Pages render their own buttons and call these, and the DOMContentLoaded
+// handler below also sweeps the whole document. Without this guard a button
+// caught by both ends up with two click handlers, which added an item twice
+// and made a wishlist toggle fire twice and cancel itself out.
+function markBound(btn) {
+    if (btn.dataset.bound === '1') return false;
+    btn.dataset.bound = '1';
+    return true;
+}
+
 function initAddToCartButtons(root = document) {
     root.querySelectorAll('.add-cart-btn').forEach((btn) => {
+        if (!markBound(btn)) return;
         btn.addEventListener('click', async (e) => {
             e.stopPropagation();
             const original = btn.innerHTML;
@@ -266,9 +277,12 @@ async function initWishlistButtons(root = document) {
     buttons.forEach((btn) => {
         const id = btn.dataset.id;
         const active = list.includes(id);
+        // State is refreshed even on a button that is already wired
         btn.classList.toggle('active', active);
         btn.setAttribute('aria-pressed', String(active));
         btn.setAttribute('aria-label', (active ? 'Remove from' : 'Add to') + ' wishlist');
+
+        if (!markBound(btn)) return;
 
         btn.addEventListener('click', async (e) => {
             e.stopPropagation();
