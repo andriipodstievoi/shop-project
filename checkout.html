@@ -67,8 +67,6 @@
             <div id="checkoutArea" hidden>
                 <div id="checkoutItems"></div>
 
-                <div class="shortage-notice" id="shortageNotice" role="alert" hidden></div>
-
                 <div class="cart-summary">
                     <span>Total</span>
                     <span id="checkoutTotal">$0.00</span>
@@ -118,6 +116,10 @@
                         <p class="field-hint">
                             No online payment: we contact you to confirm the order and arrange payment.
                         </p>
+
+                        <!-- Sits directly above the button, because that is
+                             where the customer is looking when it matters -->
+                        <div class="shortage-notice" id="shortageNotice" role="alert" hidden></div>
 
                         <p class="form-error" id="checkoutError" role="alert"></p>
 
@@ -206,8 +208,8 @@
                     const warn = document.createElement('div');
                     warn.className = 'line-shortage';
                     warn.textContent = available === 0
-                        ? 'Out of stock'
-                        : 'Only ' + available + ' of ' + item.qty + ' available';
+                        ? 'Out of stock — you asked for ' + item.qty
+                        : 'You asked for ' + item.qty + ', only ' + available + ' in stock';
                     row.appendChild(warn);
                 }
 
@@ -233,9 +235,16 @@
                 const ul = document.createElement('ul');
                 list.forEach((s) => {
                     const li = document.createElement('li');
-                    li.textContent = s.available === 0
-                        ? s.name + ' — out of stock (you asked for ' + s.requested + ')'
-                        : s.name + ' — only ' + s.available + ' left, you asked for ' + s.requested;
+
+                    const name = document.createElement('strong');
+                    name.textContent = s.name;
+
+                    const detail = document.createElement('span');
+                    detail.textContent = s.available === 0
+                        ? ' — out of stock, you asked for ' + s.requested
+                        : ' — you asked for ' + s.requested + ', only ' + s.available + ' in stock';
+
+                    li.append(name, detail);
                     ul.appendChild(li);
                 });
                 shortageBox.appendChild(ul);

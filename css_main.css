@@ -833,16 +833,46 @@ main {
     font-size: 14px;
 }
 
+/* An affected line has to be obvious at a glance, not a faint tint */
 .cart-item-short {
-    background: #fff8f8;
+    background: #fff2f2;
+    border-left: 4px solid #c0392b;
+    padding-left: 12px;
+    margin-left: -16px;
+    border-radius: 4px;
+}
+
+.cart-item-short .cart-item-name {
+    color: #a4262c;
 }
 
 .line-shortage {
-    width: 100%;
-    font-size: 13px;
+    /* Own line under the row */
+    flex-basis: 100%;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 14px;
     font-weight: bold;
-    color: #b12704;
-    padding-top: 4px;
+    color: #fff;
+    background: #c0392b;
+    padding: 6px 10px;
+    border-radius: 4px;
+    margin-top: 4px;
+}
+
+.line-shortage::before {
+    content: "!";
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #fff;
+    color: #c0392b;
+    font-size: 12px;
+    flex-shrink: 0;
 }
 
 /* ===== Checkout ===== */
@@ -1079,6 +1109,9 @@ main {
 .cart-item {
     display: flex;
     align-items: center;
+    /* Wrapping lets a full-width note drop onto its own line under the row
+       instead of being squeezed between the price and the buttons */
+    flex-wrap: wrap;
     gap: 16px;
     padding: 16px 0;
     border-bottom: 1px solid #e5e5e5;
