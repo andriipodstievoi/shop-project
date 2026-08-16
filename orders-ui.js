@@ -3,10 +3,42 @@
 
 const ORDER_STATUSES = ['new', 'processing', 'shipped', 'completed', 'cancelled'];
 
-function formatOrderDate(value) {
+function formatOrderDate(value, dateOnly) {
     // MySQL returns "YYYY-MM-DD HH:MM:SS"; Safari refuses that with a space
     const date = new Date(String(value).replace(' ', 'T'));
-    return isNaN(date) ? String(value) : date.toLocaleString();
+    if (isNaN(date)) return String(value);
+    return dateOnly ? date.toLocaleDateString() : date.toLocaleString();
+}
+
+function buildDeliveryLine(order) {
+    const wrap = document.createElement('div');
+    wrap.className = 'order-delivery';
+
+    const where = [order.address, order.city, order.postal_code, order.country]
+        .filter(Boolean)
+        .join(', ');
+
+    const addr = document.createElement('div');
+    addr.textContent = where || order.address || '';
+    wrap.appendChild(addr);
+
+    if (order.delivery_method) {
+        const method = document.createElement('div');
+        const cost = Number(order.shipping_cost) === 0 ? 'free' : formatPrice(Number(order.shipping_cost));
+        method.textContent = order.delivery_method + ' · ' + cost;
+        wrap.appendChild(method);
+    }
+
+    // Only meaningful while the order is still on its way
+    if (order.eta_from && order.eta_to && order.status !== 'cancelled' && order.status !== 'completed') {
+        const eta = document.createElement('div');
+        eta.className = 'order-eta';
+        eta.textContent = 'Expected ' + formatOrderDate(order.eta_from, true) +
+            ' – ' + formatOrderDate(order.eta_to, true);
+        wrap.appendChild(eta);
+    }
+
+    return wrap;
 }
 
 function buildStatusBadge(status) {
@@ -43,11 +75,9 @@ function buildOrderCard(order, options = {}) {
             (order.contact_phone ? ' · ' + order.contact_phone : '');
         card.appendChild(customer);
 
-        const addr = document.createElement('p');
-        addr.className = 'order-address';
-        addr.textContent = order.address;
-        card.appendChild(addr);
     }
+
+    card.appendChild(buildDeliveryLine(order));
 
     const lines = document.createElement('ul');
     lines.className = 'order-lines';
@@ -78,6 +108,24 @@ function buildOrderCard(order, options = {}) {
     total.className = 'order-total';
     total.textContent = 'Total ' + formatPrice(order.total);
     foot.appendChild(total);
+
+    // Customers may pull back an order the shop has not started handling yet
+    if (options.onCancel && order.status === 'new') {
+        const cancel = document.createElement('button');
+        cancel.type = 'button';
+        cancel.className = 'btn btn-outline';
+        cancel.textContent = 'Cancel order';
+        cancel.addEventListener('click', async () => {
+            cancel.disabled = true;
+            try {
+                await options.onCancel(order.id);
+            } catch (err) {
+                console.error(err);
+                cancel.disabled = false;
+            }
+        });
+        foot.appendChild(cancel);
+    }
 
     // Admins can move an order along
     if (options.onStatusChange) {

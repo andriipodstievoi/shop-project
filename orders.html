@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>My Orders</title>
-    <link rel="stylesheet" href="css_main.css">
+    <link rel="stylesheet" href="css_main.css?v=3">
 </head>
 
 <body>
@@ -23,6 +23,28 @@
             <a href="products.html" class="back-btn">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
                 Shop
+            </a>
+        </div>
+        <div class="header-icons">
+            <div class="icon-btn">
+                <a href="wishlist.html" aria-label="Wishlist">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20s-7-4.35-9.5-8.5C1 8 2.5 4.5 6 4.5c2 0 3.5 1.2 4.5 2.8 1-1.6 2.5-2.8 4.5-2.8 3.5 0 5 3.5 3.5 7-2.5 4.15-9.5 8.5-9.5 8.5z"/></svg>
+                </a>
+            </div>
+            <div class="icon-btn">
+                <a href="cart.html" aria-label="Cart">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="21" r="1"/><circle cx="18" cy="21" r="1"/><path d="M2.5 3h2l2.4 12.2a2 2 0 0 0 2 1.6h8.4a2 2 0 0 0 2-1.6L21 7H6"/></svg>
+                    <span class="cart-badge">0</span>
+                </a>
+            </div>
+            <div class="icon-btn">
+                <a href="account.html" aria-label="Account">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="3.5"/><path d="M4.5 20c1-4 4.5-6 7.5-6s6.5 2 7.5 6"/></svg>
+                </a>
+            </div>
+            <a href="contact.html" class="back-btn header-contact">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v14H4z"/><path d="M4 6l8 6 8-6"/></svg>
+                Contact
             </a>
         </div>
     </header>
@@ -44,9 +66,9 @@
         </div>
     </main>
 
-    <script src="auth.js"></script>
-    <script src="cart.js"></script>
-    <script src="orders-ui.js"></script>
+    <script src="auth.js?v=3"></script>
+    <script src="cart.js?v=3"></script>
+    <script src="orders-ui.js?v=3"></script>
     <script>
         (async () => {
             const loading = document.getElementById('ordersLoading');
@@ -61,9 +83,8 @@
                 return;
             }
 
-            try {
-                const data = await Auth.get('api/orders.php');
-                const orders = data.orders || [];
+            async function render(orders) {
+                list.innerHTML = '';
 
                 if (orders.length === 0) {
                     const empty = document.createElement('p');
@@ -77,7 +98,20 @@
                     return;
                 }
 
-                orders.forEach((order) => list.appendChild(buildOrderCard(order)));
+                orders.forEach((order) => list.appendChild(buildOrderCard(order, {
+                    onCancel: async (orderId) => {
+                        const res = await Auth.post('api/orders.php', {
+                            action: 'cancel',
+                            order_id: orderId
+                        });
+                        await render(res.orders || []);
+                    }
+                })));
+            }
+
+            try {
+                const data = await Auth.get('api/orders.php');
+                await render(data.orders || []);
             } catch (err) {
                 const msg = document.createElement('p');
                 msg.className = 'form-error';

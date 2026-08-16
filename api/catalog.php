@@ -1,31 +1,53 @@
 <?php
-// Reads products.json, the single source of truth shared with the browser.
-// Used to validate ids before writing them, and to price items server-side.
+// The catalog now lives in the products table so the admin panel can edit it.
+// products.json remains only as the one-time seed (sql/seed-products.sql).
 declare(strict_types=1);
+require_once __DIR__ . '/db.php';
 
-function catalog(): array
+function product_row_to_array(array $row): array
 {
-    static $byId = null;
+    return [
+        'id' => $row['id'],
+        'name' => $row['name'],
+        'price' => (float) $row['price'],
+        'category' => $row['category'],
+        'blurb' => (string) $row['blurb'],
+        'image_url' => (string) $row['image_url'],
+        'rating' => (float) $row['rating'],
+        'reviews' => (int) $row['reviews'],
+        'stock' => (int) $row['stock'],
+        'active' => (int) $row['active'] === 1,
+        'icon' => [
+            'color' => $row['icon_color'],
+            'bg' => $row['icon_bg'],
+            'svg' => (string) $row['icon_svg'],
+        ],
+    ];
+}
 
-    if ($byId === null) {
-        $path = __DIR__ . '/../products.json';
-        $raw = is_file($path) ? file_get_contents($path) : false;
-        $list = $raw === false ? null : json_decode($raw, true);
+// Keyed by id. $includeInactive is for the admin panel, which must still see
+// retired products; the storefront only ever gets active ones.
+function catalog(bool $includeInactive = false): array
+{
+    static $cache = [];
+    $key = $includeInactive ? 'all' : 'active';
 
-        if (!is_array($list)) {
-            error_log('Catalog missing or invalid: ' . $path);
-            return [];
+    if (!isset($cache[$key])) {
+        $sql = 'SELECT * FROM products';
+        if (!$includeInactive) {
+            $sql .= ' WHERE active = 1';
         }
+        $sql .= ' ORDER BY created_at, id';
 
+        $rows = db()->query($sql)->fetchAll();
         $byId = [];
-        foreach ($list as $product) {
-            if (isset($product['id'])) {
-                $byId[(string) $product['id']] = $product;
-            }
+        foreach ($rows as $row) {
+            $byId[$row['id']] = product_row_to_array($row);
         }
+        $cache[$key] = $byId;
     }
 
-    return $byId;
+    return $cache[$key];
 }
 
 function product_exists(string $id): bool
@@ -36,4 +58,9 @@ function product_exists(string $id): bool
 function product_price(string $id): float
 {
     return (float) (catalog()[$id]['price'] ?? 0.0);
+}
+
+function product_stock(string $id): int
+{
+    return (int) (catalog()[$id]['stock'] ?? 0);
 }

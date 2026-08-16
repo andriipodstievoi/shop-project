@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Admin</title>
-    <link rel="stylesheet" href="css_main.css">
+    <link rel="stylesheet" href="css_main.css?v=3">
 </head>
 
 <body>
@@ -23,6 +23,28 @@
             <a href="account.html" class="back-btn">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="3.5"/><path d="M4.5 20c1-4 4.5-6 7.5-6s6.5 2 7.5 6"/></svg>
                 Account
+            </a>
+        </div>
+        <div class="header-icons">
+            <div class="icon-btn">
+                <a href="wishlist.html" aria-label="Wishlist">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20s-7-4.35-9.5-8.5C1 8 2.5 4.5 6 4.5c2 0 3.5 1.2 4.5 2.8 1-1.6 2.5-2.8 4.5-2.8 3.5 0 5 3.5 3.5 7-2.5 4.15-9.5 8.5-9.5 8.5z"/></svg>
+                </a>
+            </div>
+            <div class="icon-btn">
+                <a href="cart.html" aria-label="Cart">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="21" r="1"/><circle cx="18" cy="21" r="1"/><path d="M2.5 3h2l2.4 12.2a2 2 0 0 0 2 1.6h8.4a2 2 0 0 0 2-1.6L21 7H6"/></svg>
+                    <span class="cart-badge">0</span>
+                </a>
+            </div>
+            <div class="icon-btn">
+                <a href="account.html" aria-label="Account">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="3.5"/><path d="M4.5 20c1-4 4.5-6 7.5-6s6.5 2 7.5 6"/></svg>
+                </a>
+            </div>
+            <a href="contact.html" class="back-btn header-contact">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v14H4z"/><path d="M4 6l8 6 8-6"/></svg>
+                Contact
             </a>
         </div>
     </header>
@@ -46,18 +68,69 @@
 
                 <div class="admin-tabs">
                     <button type="button" class="tab-btn active" data-tab="orders">Orders</button>
+                    <button type="button" class="tab-btn" data-tab="products">Products</button>
+                    <button type="button" class="tab-btn" data-tab="messages">Messages</button>
                     <button type="button" class="tab-btn" data-tab="users">Users</button>
                 </div>
 
                 <div id="tabOrders"></div>
+
+                <div id="tabProducts" hidden>
+                    <div class="product-editor">
+                        <h2 id="editorHeading">Add a product</h2>
+                        <form id="productForm">
+                            <input type="hidden" id="productId">
+                            <div class="form-row">
+                                <div class="form-field">
+                                    <label for="productName">Name</label>
+                                    <input type="text" id="productName" required>
+                                </div>
+                                <div class="form-field">
+                                    <label for="productCategory">Category</label>
+                                    <input type="text" id="productCategory" placeholder="Outerwear" list="categoryList">
+                                    <datalist id="categoryList"></datalist>
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-field">
+                                    <label for="productPrice">Price</label>
+                                    <input type="number" id="productPrice" step="0.01" min="0" required>
+                                </div>
+                                <div class="form-field">
+                                    <label for="productStock">Stock</label>
+                                    <input type="number" id="productStock" step="1" min="0" required>
+                                </div>
+                            </div>
+                            <div class="form-field">
+                                <label for="productImage">Image URL <span class="field-hint">(optional)</span></label>
+                                <input type="url" id="productImage" placeholder="https://example.com/photo.jpg">
+                                <span class="field-hint">Leave empty to keep the drawn illustration.</span>
+                            </div>
+                            <div class="form-field">
+                                <label for="productBlurb">Description</label>
+                                <textarea id="productBlurb" rows="3"></textarea>
+                            </div>
+                            <p class="form-error" id="productError" role="alert"></p>
+                            <div class="profile-actions">
+                                <button type="submit" class="btn btn-buy" id="productSubmit">Add product</button>
+                                <button type="button" class="btn btn-outline" id="productReset" hidden>Cancel edit</button>
+                                <span class="save-confirm" id="productConfirm">Saved ✓</span>
+                            </div>
+                        </form>
+                    </div>
+
+                    <div id="productList"></div>
+                </div>
+
+                <div id="tabMessages" hidden></div>
                 <div id="tabUsers" hidden></div>
             </div>
         </div>
     </main>
 
-    <script src="auth.js"></script>
-    <script src="cart.js"></script>
-    <script src="orders-ui.js"></script>
+    <script src="auth.js?v=3"></script>
+    <script src="cart.js?v=3"></script>
+    <script src="orders-ui.js?v=3"></script>
     <script>
         (async () => {
             const loading = document.getElementById('adminLoading');
@@ -102,6 +175,8 @@
                     statTile('Users', summary.users),
                     statTile('Orders', summary.orders),
                     statTile('Awaiting action', summary.pending),
+                    statTile('Unread messages', summary.unread),
+                    statTile('Out of stock', summary.out_of_stock),
                     statTile('Revenue', formatPrice(summary.revenue))
                 );
 
@@ -126,6 +201,226 @@
                         }));
                     });
                 }
+
+                /* ---------------- products ---------------- */
+
+                const productList = document.getElementById('productList');
+                const productForm = document.getElementById('productForm');
+                const productError = document.getElementById('productError');
+                const productConfirm = document.getElementById('productConfirm');
+                const productSubmit = document.getElementById('productSubmit');
+                const productReset = document.getElementById('productReset');
+                const editorHeading = document.getElementById('editorHeading');
+
+                function clearForm() {
+                    productForm.reset();
+                    document.getElementById('productId').value = '';
+                    editorHeading.textContent = 'Add a product';
+                    productSubmit.textContent = 'Add product';
+                    productReset.hidden = true;
+                    productError.textContent = '';
+                }
+
+                function fillForm(p) {
+                    document.getElementById('productId').value = p.id;
+                    document.getElementById('productName').value = p.name;
+                    document.getElementById('productCategory').value = p.category;
+                    document.getElementById('productPrice').value = p.price;
+                    document.getElementById('productStock').value = p.stock;
+                    document.getElementById('productImage').value = p.image_url || '';
+                    document.getElementById('productBlurb').value = p.blurb || '';
+                    editorHeading.textContent = 'Editing: ' + p.name;
+                    productSubmit.textContent = 'Save changes';
+                    productReset.hidden = false;
+                    productError.textContent = '';
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                }
+
+                async function loadProducts() {
+                    const data = await Auth.get('api/admin.php?resource=products');
+                    const products = data.products || [];
+
+                    // Category suggestions for the form
+                    const datalist = document.getElementById('categoryList');
+                    datalist.innerHTML = '';
+                    [...new Set(products.map((p) => p.category).filter(Boolean))].forEach((c) => {
+                        const opt = document.createElement('option');
+                        opt.value = c;
+                        datalist.appendChild(opt);
+                    });
+
+                    productList.innerHTML = '';
+                    const table = document.createElement('table');
+                    table.className = 'admin-table';
+                    const thead = document.createElement('thead');
+                    const hr = document.createElement('tr');
+                    ['Product', 'Category', 'Price', 'Stock', 'Status', ''].forEach((h) => {
+                        const th = document.createElement('th');
+                        th.textContent = h;
+                        hr.appendChild(th);
+                    });
+                    thead.appendChild(hr);
+                    table.appendChild(thead);
+
+                    const tbody = document.createElement('tbody');
+                    products.forEach((p) => {
+                        const tr = document.createElement('tr');
+                        if (!p.active) tr.className = 'row-retired';
+
+                        [p.name, p.category, formatPrice(p.price), String(p.stock)].forEach((v) => {
+                            const td = document.createElement('td');
+                            td.textContent = v;
+                            tr.appendChild(td);
+                        });
+
+                        const statusTd = document.createElement('td');
+                        statusTd.textContent = p.active ? 'active' : 'retired';
+                        tr.appendChild(statusTd);
+
+                        const actionTd = document.createElement('td');
+                        const edit = document.createElement('button');
+                        edit.type = 'button';
+                        edit.className = 'link-btn';
+                        edit.textContent = 'Edit';
+                        edit.addEventListener('click', () => fillForm(p));
+
+                        const toggle = document.createElement('button');
+                        toggle.type = 'button';
+                        toggle.className = 'link-btn';
+                        toggle.textContent = p.active ? 'Retire' : 'Restore';
+                        toggle.addEventListener('click', async () => {
+                            toggle.disabled = true;
+                            await Auth.post('api/admin.php', {
+                                action: 'set_product_active',
+                                id: p.id,
+                                active: !p.active
+                            });
+                            await loadProducts();
+                        });
+
+                        actionTd.append(edit, toggle);
+                        tr.appendChild(actionTd);
+                        tbody.appendChild(tr);
+                    });
+                    table.appendChild(tbody);
+
+                    const wrap = document.createElement('div');
+                    wrap.className = 'table-scroll';
+                    wrap.appendChild(table);
+                    productList.appendChild(wrap);
+                }
+
+                productReset.addEventListener('click', clearForm);
+
+                productForm.addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    productError.textContent = '';
+                    productSubmit.disabled = true;
+
+                    const id = document.getElementById('productId').value;
+                    try {
+                        await Auth.post('api/admin.php', {
+                            action: 'save_product',
+                            is_new: id === '',
+                            id: id,
+                            name: document.getElementById('productName').value.trim(),
+                            category: document.getElementById('productCategory').value.trim(),
+                            price: document.getElementById('productPrice').value,
+                            stock: document.getElementById('productStock').value,
+                            image_url: document.getElementById('productImage').value.trim(),
+                            blurb: document.getElementById('productBlurb').value.trim()
+                        });
+                        clearForm();
+                        productConfirm.classList.add('show');
+                        setTimeout(() => productConfirm.classList.remove('show'), 1500);
+                        await loadProducts();
+                    } catch (err) {
+                        productError.textContent = err.message;
+                    }
+                    productSubmit.disabled = false;
+                });
+
+                await loadProducts();
+
+                /* ---------------- messages ---------------- */
+
+                const messagesTab = document.getElementById('tabMessages');
+
+                async function loadMessages() {
+                    const data = await Auth.get('api/admin.php?resource=messages');
+                    const messages = data.messages || [];
+                    messagesTab.innerHTML = '';
+
+                    if (!messages.length) {
+                        const empty = document.createElement('p');
+                        empty.className = 'cart-empty';
+                        empty.textContent = 'No messages yet.';
+                        messagesTab.appendChild(empty);
+                        return;
+                    }
+
+                    messages.forEach((m) => {
+                        const card = document.createElement('section');
+                        card.className = 'order-card message-card status-msg-' + m.status;
+
+                        const head = document.createElement('div');
+                        head.className = 'order-head';
+                        const who = document.createElement('div');
+                        const name = document.createElement('span');
+                        name.className = 'order-number';
+                        name.textContent = m.name;
+                        const when = document.createElement('span');
+                        when.className = 'order-date';
+                        when.textContent = formatOrderDate(m.created_at);
+                        who.append(name, when);
+
+                        const badge = document.createElement('span');
+                        badge.className = 'status-badge status-' + (m.status === 'new' ? 'new' : m.status === 'read' ? 'processing' : 'completed');
+                        badge.textContent = m.status;
+                        head.append(who, badge);
+
+                        const from = document.createElement('p');
+                        from.className = 'order-customer';
+                        from.textContent = m.email + (m.subject ? ' · ' + m.subject : '');
+
+                        const body = document.createElement('p');
+                        body.className = 'message-body';
+                        body.textContent = m.body;
+
+                        const foot = document.createElement('div');
+                        foot.className = 'order-foot';
+                        const reply = document.createElement('a');
+                        reply.className = 'btn btn-outline';
+                        reply.href = 'mailto:' + encodeURIComponent(m.email) +
+                            '?subject=' + encodeURIComponent('Re: ' + (m.subject || 'your message'));
+                        reply.textContent = 'Reply by email';
+
+                        const select = document.createElement('select');
+                        select.className = 'status-select';
+                        ['new', 'read', 'resolved'].forEach((s) => {
+                            const o = document.createElement('option');
+                            o.value = s;
+                            o.textContent = s;
+                            if (s === m.status) o.selected = true;
+                            select.appendChild(o);
+                        });
+                        select.addEventListener('change', async () => {
+                            select.disabled = true;
+                            await Auth.post('api/admin.php', {
+                                action: 'set_message_status',
+                                message_id: m.id,
+                                status: select.value
+                            });
+                            await loadMessages();
+                        });
+
+                        foot.append(reply, select);
+                        card.append(head, from, body, foot);
+                        messagesTab.appendChild(card);
+                    });
+                }
+
+                await loadMessages();
 
                 const usersData = await Auth.get('api/admin.php?resource=users');
                 const usersTab = document.getElementById('tabUsers');
@@ -176,8 +471,11 @@
                 btn.addEventListener('click', () => {
                     document.querySelectorAll('.tab-btn').forEach((b) => b.classList.remove('active'));
                     btn.classList.add('active');
-                    document.getElementById('tabOrders').hidden = btn.dataset.tab !== 'orders';
-                    document.getElementById('tabUsers').hidden = btn.dataset.tab !== 'users';
+                    const tab = btn.dataset.tab;
+                    document.getElementById('tabOrders').hidden = tab !== 'orders';
+                    document.getElementById('tabProducts').hidden = tab !== 'products';
+                    document.getElementById('tabMessages').hidden = tab !== 'messages';
+                    document.getElementById('tabUsers').hidden = tab !== 'users';
                 });
             });
         })();

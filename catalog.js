@@ -69,9 +69,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         const media = document.createElement('div');
         media.className = 'card-media';
-        media.style.background = product.icon.bg;
-        media.style.color = product.icon.color;
-        media.innerHTML = '<svg viewBox="0 0 100 100" aria-hidden="true">' + product.icon.svg + '</svg>';
+        fillProductMedia(media, product);
         media.addEventListener('click', () => goToProduct(product.id));
 
         const heart = document.createElement('button');
@@ -104,11 +102,32 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         const addBtn = document.createElement('button');
         addBtn.type = 'button';
-        addBtn.className = 'btn btn-buy add-cart-btn';
         addBtn.dataset.id = product.id;
-        addBtn.textContent = 'Add to cart';
 
-        card.append(media, title, ratingRow, price, category, addBtn);
+        const stock = Number(product.stock);
+        const inStock = stock > 0;
+
+        // The exact count is always visible, with a warning tone when it runs low
+        const stockLine = document.createElement('div');
+        stockLine.className = 'stock-line' + (inStock ? (stock <= 5 ? ' stock-low' : '') : ' stock-none');
+        stockLine.textContent = inStock ? 'In stock: ' + stock : 'Out of stock';
+
+        if (inStock) {
+            addBtn.className = 'btn btn-buy add-cart-btn';
+            addBtn.textContent = 'Add to cart';
+        } else {
+            // Not wired as an add-cart-btn at all, so it cannot be clicked
+            addBtn.className = 'btn btn-disabled';
+            addBtn.textContent = 'Out of stock';
+            addBtn.disabled = true;
+
+            const flag = document.createElement('div');
+            flag.className = 'stock-flag';
+            flag.textContent = 'Out of stock';
+            media.appendChild(flag);
+        }
+
+        card.append(media, title, ratingRow, price, category, stockLine, addBtn);
         return card;
     }
 

@@ -9,7 +9,9 @@ require_once __DIR__ . '/db.php';
 function orders_for(?int $userId, ?int $onlyOrderId = null): array
 {
     $sql = 'SELECT o.id, o.user_id, o.contact_name, o.contact_email, o.contact_phone,
-                   o.address, o.total, o.status, o.created_at
+                   o.address, o.country, o.city, o.postal_code,
+                   o.delivery_method, o.shipping_cost, o.eta_from, o.eta_to,
+                   o.total, o.status, o.created_at
             FROM orders o';
     $params = [];
     $where = [];
@@ -43,6 +45,7 @@ function orders_for(?int $userId, ?int $onlyOrderId = null): array
         $order['id'] = (int) $order['id'];
         $order['user_id'] = $order['user_id'] === null ? null : (int) $order['user_id'];
         $order['total'] = (float) $order['total'];
+        $order['shipping_cost'] = (float) $order['shipping_cost'];
 
         $itemStmt->execute([$order['id']]);
         $items = $itemStmt->fetchAll();

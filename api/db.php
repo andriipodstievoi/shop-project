@@ -2,6 +2,18 @@
 // PDO connection shared by every endpoint.
 declare(strict_types=1);
 
+// Any error that escapes an endpoint must not reach the browser: a PDO
+// exception message carries table and column names, and PHP would otherwise
+// print it into the response body with a 200 status.
+set_exception_handler(static function (Throwable $e): void {
+    error_log('Unhandled error: ' . $e->getMessage() . ' in ' . $e->getFile() . ':' . $e->getLine());
+    if (!headers_sent()) {
+        http_response_code(500);
+        header('Content-Type: application/json; charset=utf-8');
+    }
+    echo json_encode(['error' => 'Something went wrong on the server']);
+});
+
 function config(): array
 {
     static $config = null;

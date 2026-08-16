@@ -556,6 +556,257 @@ main {
     color: #666;
 }
 
+/* ===== Product images and stock ===== */
+.card-media img,
+.cart-item-illustration img,
+.product-illustration img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: inherit;
+}
+
+.stock-flag {
+    position: absolute;
+    left: 8px;
+    bottom: 8px;
+    background: rgba(15, 17, 17, 0.82);
+    color: #fff;
+    font-size: 12px;
+    font-weight: bold;
+    padding: 3px 8px;
+    border-radius: 4px;
+}
+
+.stock-line {
+    font-size: 13px;
+    color: #007600;
+    margin-bottom: 10px;
+}
+
+/* Low and zero stock shift to a warning tone */
+.stock-line.stock-low {
+    color: #b12704;
+    font-weight: bold;
+}
+
+.stock-line.stock-none {
+    color: #767676;
+}
+
+.product-view .stock-line {
+    margin: 6px 0 0;
+    font-size: 14px;
+}
+
+/* Keeps the Contact label readable next to the round icon buttons */
+.header-contact {
+    margin-left: 6px;
+    white-space: nowrap;
+}
+
+.btn-disabled {
+    background: #eceded;
+    border-color: #d5d9d9;
+    color: #767676;
+    cursor: not-allowed;
+    border-radius: 100px;
+    margin-top: auto;
+    width: 100%;
+    justify-content: center;
+}
+
+/* ===== Forms with two columns ===== */
+.form-row {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.form-row .form-field {
+    flex: 1;
+    min-width: 140px;
+}
+
+.form-field select {
+    padding: 10px 12px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    font-size: 14px;
+    font-family: inherit;
+    background: #fff;
+}
+
+.form-field select:focus {
+    outline: none;
+    border-color: #222;
+}
+
+/* ===== Delivery options ===== */
+.delivery-heading {
+    font-size: 17px;
+    margin: 22px 0 10px;
+}
+
+.delivery-options {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 18px;
+}
+
+.delivery-option {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    border: 1px solid #d5d9d9;
+    border-radius: 8px;
+    padding: 12px 14px;
+    cursor: pointer;
+}
+
+.delivery-option:hover {
+    border-color: #999;
+}
+
+.delivery-option:has(input:checked) {
+    border-color: #ffa41c;
+    background: #fffaf0;
+}
+
+.delivery-option > div:nth-child(2) {
+    flex: 1;
+}
+
+.delivery-title {
+    font-weight: bold;
+}
+
+.delivery-note {
+    font-size: 13px;
+    color: #565959;
+}
+
+.delivery-cost {
+    font-weight: bold;
+    white-space: nowrap;
+}
+
+.checkout-totals {
+    border-top: 1px solid #eee;
+    padding-top: 12px;
+    margin-bottom: 16px;
+}
+
+.checkout-totals > div {
+    display: flex;
+    justify-content: space-between;
+    padding: 4px 0;
+    font-size: 14px;
+    color: #565959;
+}
+
+.checkout-totals .grand {
+    font-size: 18px;
+    font-weight: bold;
+    color: #0f1111;
+    border-top: 1px solid #eee;
+    margin-top: 6px;
+    padding-top: 10px;
+}
+
+.order-delivery {
+    font-size: 13px;
+    color: #565959;
+    margin-top: 8px;
+    line-height: 1.5;
+}
+
+.order-eta {
+    color: #0f1111;
+    font-weight: bold;
+}
+
+/* ===== Password block ===== */
+.password-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.password-head h2 {
+    margin: 0;
+}
+
+#passwordForm {
+    margin-top: 16px;
+}
+
+/* ===== Contact ===== */
+.contact-page {
+    max-width: 520px;
+}
+
+.contact-intro {
+    color: #565959;
+    margin-top: 0;
+}
+
+.contact-page textarea,
+.product-editor textarea {
+    padding: 10px 12px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    font-size: 14px;
+    font-family: inherit;
+    resize: vertical;
+}
+
+.message-body {
+    white-space: pre-wrap;
+    margin: 10px 0 0;
+    line-height: 1.5;
+}
+
+.message-card.status-msg-new {
+    border-left: 4px solid #ffa41c;
+}
+
+/* ===== Admin product editor ===== */
+.product-editor {
+    background: #fff;
+    border: 1px solid #e3e6e6;
+    border-radius: 8px;
+    padding: 18px;
+    margin-bottom: 22px;
+}
+
+.product-editor h2 {
+    margin-top: 0;
+    font-size: 18px;
+}
+
+.link-btn {
+    background: none;
+    border: none;
+    color: #007185;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 14px;
+    padding: 0 8px 0 0;
+}
+
+.link-btn:hover {
+    color: #c7511f;
+    text-decoration: underline;
+}
+
+.row-retired td {
+    opacity: 0.55;
+}
+
 /* ===== Checkout ===== */
 .cart-actions {
     display: flex;

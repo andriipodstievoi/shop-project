@@ -9,30 +9,57 @@ const WISHLIST_KEY = 'shop_wishlist';
 
 let PRODUCTS = [];
 let productsById = {};
+let SHIPPING_METHODS = {};
 let catalogPromise = null;
 
-// products.json is shared with the PHP API, so both sides agree on ids/prices
+// The catalog comes from the database via the API, so admin edits appear
+// immediately and prices can never be supplied by the browser.
 function loadCatalog() {
     if (!catalogPromise) {
-        catalogPromise = fetch('products.json')
+        catalogPromise = fetch('api/products.php', { credentials: 'same-origin' })
             .then((res) => {
                 if (!res.ok) throw new Error('HTTP ' + res.status);
                 return res.json();
             })
-            .then((list) => {
-                PRODUCTS = Array.isArray(list) ? list : [];
+            .then((data) => {
+                PRODUCTS = Array.isArray(data.products) ? data.products : [];
+                SHIPPING_METHODS = data.shipping || {};
                 productsById = {};
                 PRODUCTS.forEach((p) => { productsById[p.id] = p; });
                 return PRODUCTS;
             })
             .catch((err) => {
-                console.error('Could not load products.json:', err.message);
+                console.error('Could not load the catalog:', err.message);
                 PRODUCTS = [];
                 productsById = {};
                 return PRODUCTS;
             });
     }
     return catalogPromise;
+}
+
+// A product shows its uploaded image when it has one, and falls back to the
+// drawn SVG otherwise, so older products keep their illustrations.
+function fillProductMedia(el, product) {
+    el.style.background = product.icon.bg;
+    el.style.color = product.icon.color;
+    el.innerHTML = '';
+
+    if (product.image_url) {
+        const img = document.createElement('img');
+        img.src = product.image_url;
+        img.alt = product.name;
+        img.loading = 'lazy';
+        // A dead link falls back to the illustration rather than a broken icon
+        img.addEventListener('error', () => {
+            img.remove();
+            el.innerHTML = '<svg viewBox="0 0 100 100" aria-hidden="true">' + (product.icon.svg || '') + '</svg>';
+        });
+        el.appendChild(img);
+        return;
+    }
+
+    el.innerHTML = '<svg viewBox="0 0 100 100" aria-hidden="true">' + (product.icon.svg || '') + '</svg>';
 }
 
 function getProduct(id) {
@@ -306,9 +333,7 @@ async function initWishlistButtons(root = document) {
 function buildItemMedia(product, priceLabel) {
     const illustration = document.createElement('div');
     illustration.className = 'cart-item-illustration';
-    illustration.style.background = product.icon.bg;
-    illustration.style.color = product.icon.color;
-    illustration.innerHTML = '<svg viewBox="0 0 100 100" aria-hidden="true">' + product.icon.svg + '</svg>';
+    fillProductMedia(illustration, product);
 
     const info = document.createElement('div');
     info.className = 'cart-item-info';

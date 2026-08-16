@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Product</title>
-    <link rel="stylesheet" href="css_main.css">
+    <link rel="stylesheet" href="css_main.css?v=3">
 </head>
 
 <body>
@@ -42,6 +42,10 @@
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="3.5"/><path d="M4.5 20c1-4 4.5-6 7.5-6s6.5 2 7.5 6"/></svg>
                 </a>
             </div>
+            <a href="contact.html" class="back-btn header-contact">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v14H4z"/><path d="M4 6l8 6 8-6"/></svg>
+                Contact
+            </a>
         </div>
     </header>
 
@@ -49,8 +53,8 @@
         <div class="product-view" id="productView"></div>
     </main>
 
-    <script src="auth.js"></script>
-    <script src="cart.js"></script>
+    <script src="auth.js?v=3"></script>
+    <script src="cart.js?v=3"></script>
     <script>
         // Only the product id travels in the URL; name and price come from the
         // catalog, so a crafted link cannot invent a product or a price.
@@ -122,11 +126,24 @@
             price.className = 'price';
             price.textContent = formatPrice(product.price);
 
+            const stock = Number(product.stock);
+            const inStock = stock > 0;
+
+            const stockLine = document.createElement('div');
+            stockLine.className = 'stock-line' + (inStock ? (stock <= 5 ? ' stock-low' : '') : ' stock-none');
+            stockLine.textContent = inStock ? 'In stock: ' + stock + ' available' : 'Out of stock';
+
             const addBtn = document.createElement('button');
             addBtn.type = 'button';
-            addBtn.className = 'btn btn-buy add-cart-btn';
             addBtn.dataset.id = product.id;
-            addBtn.textContent = 'Add to cart';
+            if (inStock) {
+                addBtn.className = 'btn btn-buy add-cart-btn';
+                addBtn.textContent = 'Add to cart';
+            } else {
+                addBtn.className = 'btn btn-disabled';
+                addBtn.textContent = 'Out of stock';
+                addBtn.disabled = true;
+            }
 
             const wishBtn = document.createElement('button');
             wishBtn.type = 'button';
@@ -138,7 +155,7 @@
             actions.className = 'product-actions';
             actions.append(addBtn, wishBtn);
 
-            view.append(illustration, category, heading, rating, blurb, price, actions);
+            view.append(illustration, category, heading, rating, blurb, price, stockLine, actions);
         })();
     </script>
 

@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>My Account</title>
-    <link rel="stylesheet" href="css_main.css">
+    <link rel="stylesheet" href="css_main.css?v=3">
 </head>
 
 <body>
@@ -42,6 +42,10 @@
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="3.5"/><path d="M4.5 20c1-4 4.5-6 7.5-6s6.5 2 7.5 6"/></svg>
                 </a>
             </div>
+            <a href="contact.html" class="back-btn header-contact">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v14H4z"/><path d="M4 6l8 6 8-6"/></svg>
+                Contact
+            </a>
         </div>
     </header>
 
@@ -94,6 +98,35 @@
                     </form>
                 </section>
 
+                <section class="profile-card">
+                    <div class="password-head">
+                        <h2>Password</h2>
+                        <button type="button" class="btn btn-outline" id="changePasswordBtn">Change password</button>
+                    </div>
+
+                    <form id="passwordForm" hidden>
+                        <div class="form-field">
+                            <label for="currentPassword">Current password</label>
+                            <input type="password" id="currentPassword" autocomplete="current-password" required>
+                        </div>
+                        <div class="form-field">
+                            <label for="newPassword">New password</label>
+                            <input type="password" id="newPassword" autocomplete="new-password" required>
+                            <span class="field-hint">At least 8 characters.</span>
+                        </div>
+                        <div class="form-field">
+                            <label for="repeatPassword">Repeat new password</label>
+                            <input type="password" id="repeatPassword" autocomplete="new-password" required>
+                        </div>
+                        <div class="profile-actions">
+                            <button type="submit" class="btn btn-buy">Save new password</button>
+                            <button type="button" class="btn btn-outline" id="cancelPasswordBtn">Cancel</button>
+                            <span class="save-confirm" id="passwordConfirm">Changed ✓</span>
+                            <span class="form-error" id="passwordError" role="alert"></span>
+                        </div>
+                    </form>
+                </section>
+
                 <div class="account-links">
                     <a class="account-link" href="orders.html">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 2h9l4 4v16H6z"/><path d="M9 12h7M9 16h7M9 8h3"/></svg>
@@ -118,8 +151,8 @@
         </div>
     </main>
 
-    <script src="auth.js"></script>
-    <script src="cart.js"></script>
+    <script src="auth.js?v=3"></script>
+    <script src="cart.js?v=3"></script>
     <script>
         (async () => {
             const loading = document.getElementById('accountLoading');
@@ -158,6 +191,54 @@
                     setTimeout(() => confirmEl.classList.remove('show'), 1500);
                 } catch (err) {
                     errorEl.textContent = err.message;
+                }
+            });
+
+            // Password form stays collapsed until asked for
+            const pwForm = document.getElementById('passwordForm');
+            const pwError = document.getElementById('passwordError');
+            const pwConfirm = document.getElementById('passwordConfirm');
+            const pwToggle = document.getElementById('changePasswordBtn');
+
+            pwToggle.addEventListener('click', () => {
+                pwForm.hidden = !pwForm.hidden;
+                pwError.textContent = '';
+            });
+
+            document.getElementById('cancelPasswordBtn').addEventListener('click', () => {
+                pwForm.reset();
+                pwForm.hidden = true;
+                pwError.textContent = '';
+            });
+
+            pwForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                pwError.textContent = '';
+
+                const current = document.getElementById('currentPassword').value;
+                const next = document.getElementById('newPassword').value;
+                const repeat = document.getElementById('repeatPassword').value;
+
+                if (next.length < 8) {
+                    pwError.textContent = 'The new password must be at least 8 characters';
+                    return;
+                }
+                if (next !== repeat) {
+                    pwError.textContent = 'The two new passwords do not match';
+                    return;
+                }
+
+                try {
+                    await Auth.post('api/password.php', {
+                        current_password: current,
+                        new_password: next
+                    });
+                    pwForm.reset();
+                    pwForm.hidden = true;
+                    pwConfirm.classList.add('show');
+                    setTimeout(() => pwConfirm.classList.remove('show'), 2000);
+                } catch (err) {
+                    pwError.textContent = err.message;
                 }
             });
 
