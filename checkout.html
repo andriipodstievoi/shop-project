@@ -67,6 +67,8 @@
             <div id="checkoutArea" hidden>
                 <div id="checkoutItems"></div>
 
+                <div class="shortage-notice" id="shortageNotice" role="alert" hidden></div>
+
                 <div class="cart-summary">
                     <span>Total</span>
                     <span id="checkoutTotal">$0.00</span>
@@ -172,7 +174,10 @@
 
             // Order summary, priced from the catalog
             const itemsEl = document.getElementById('checkoutItems');
+            const shortageBox = document.getElementById('shortageNotice');
             let total = 0;
+            let blocked = false;
+
             cart.forEach((item) => {
                 const product = getProduct(item.id);
                 if (!product) return;
@@ -191,9 +196,72 @@
                 lineTotal.textContent = formatPrice(product.price * item.qty);
 
                 row.append(qty, lineTotal);
+
+                // Warn before the customer fills in the form, not after they
+                // press the button. The server still re-checks on submit.
+                const available = Number(product.stock);
+                if (available < item.qty) {
+                    blocked = true;
+                    row.classList.add('cart-item-short');
+                    const warn = document.createElement('div');
+                    warn.className = 'line-shortage';
+                    warn.textContent = available === 0
+                        ? 'Out of stock'
+                        : 'Only ' + available + ' of ' + item.qty + ' available';
+                    row.appendChild(warn);
+                }
+
                 itemsEl.appendChild(row);
             });
             document.getElementById('checkoutTotal').textContent = formatPrice(total);
+
+            // Renders the per-product detail the API returns with a 409
+            function showShortages(list) {
+                shortageBox.innerHTML = '';
+                if (!list || !list.length) {
+                    shortageBox.hidden = true;
+                    return;
+                }
+
+                const title = document.createElement('p');
+                title.className = 'shortage-title';
+                title.textContent = list.length === 1
+                    ? 'One item is not available in the quantity you chose:'
+                    : 'Some items are not available in the quantities you chose:';
+                shortageBox.appendChild(title);
+
+                const ul = document.createElement('ul');
+                list.forEach((s) => {
+                    const li = document.createElement('li');
+                    li.textContent = s.available === 0
+                        ? s.name + ' — out of stock (you asked for ' + s.requested + ')'
+                        : s.name + ' — only ' + s.available + ' left, you asked for ' + s.requested;
+                    ul.appendChild(li);
+                });
+                shortageBox.appendChild(ul);
+
+                const hint = document.createElement('p');
+                hint.className = 'shortage-hint';
+                hint.textContent = 'Adjust the quantities in your cart and come back.';
+                const link = document.createElement('a');
+                link.href = 'cart.html';
+                link.className = 'btn btn-outline';
+                link.textContent = 'Go to cart';
+                shortageBox.append(hint, link);
+
+                shortageBox.hidden = false;
+            }
+
+            if (blocked) {
+                showShortages(cart
+                    .map((item) => {
+                        const p = getProduct(item.id);
+                        return p && Number(p.stock) < item.qty
+                            ? { name: p.name, requested: item.qty, available: Number(p.stock) }
+                            : null;
+                    })
+                    .filter(Boolean));
+            }
 
             // Prefill from the saved profile
             document.getElementById('contactName').value = user.name || '';
@@ -295,6 +363,14 @@
                     await updateCartBadge();
                 } catch (err) {
                     errorEl.textContent = err.message;
+
+                    // The API names every product that ran short, so show the
+                    // whole list rather than a bare sentence
+                    if (err.data && err.data.shortages) {
+                        showShortages(err.data.shortages);
+                        shortageBox.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }
+
                     btn.disabled = false;
                 }
             });

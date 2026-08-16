@@ -20,7 +20,12 @@ const Auth = (() => {
         }
 
         if (!res.ok) {
-            throw new Error(data.error || 'Request failed');
+            const err = new Error(data.error || 'Request failed');
+            // Endpoints can return structured detail alongside the message,
+            // such as which cart lines ran short of stock
+            err.data = data;
+            err.status = res.status;
+            throw err;
         }
         return data;
     }

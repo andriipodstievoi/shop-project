@@ -98,6 +98,7 @@ try {
     $productStmt = $pdo->prepare('SELECT id, name, price, stock FROM products WHERE id = ? AND active = 1 FOR UPDATE');
 
     $lines = [];
+    $shortages = [];
     $itemsTotal = 0.0;
 
     foreach ($cart as $row) {
@@ -108,16 +109,33 @@ try {
 
         $productStmt->execute([$row['product_id']]);
         $product = $productStmt->fetch();
+
+        // Retired or deleted while the cart sat open
         if (!$product) {
+            $shortages[] = [
+                'id' => $row['product_id'],
+                'name' => $row['product_id'],
+                'requested' => $qty,
+                'available' => 0,
+                'reason' => 'unavailable',
+            ];
             continue;
         }
 
-        if ((int) $product['stock'] < $qty) {
-            $pdo->rollBack();
-            json_error(
-                sprintf('Only %d left of "%s". Please lower the quantity.', (int) $product['stock'], $product['name']),
-                409
-            );
+        $available = (int) $product['stock'];
+
+        // Every line is checked before anything is reported, so the customer
+        // sees the full picture at once instead of fixing one item, retrying,
+        // and being told about the next one.
+        if ($available < $qty) {
+            $shortages[] = [
+                'id' => $product['id'],
+                'name' => (string) $product['name'],
+                'requested' => $qty,
+                'available' => $available,
+                'reason' => $available === 0 ? 'out_of_stock' : 'not_enough',
+            ];
+            continue;
         }
 
         $price = (float) $product['price'];
@@ -128,6 +146,16 @@ try {
             'price' => $price,
             'qty' => $qty,
         ];
+    }
+
+    if ($shortages) {
+        $pdo->rollBack();
+        json_out([
+            'error' => count($shortages) === 1
+                ? 'One item in your cart is no longer available in that quantity'
+                : 'Some items in your cart are no longer available in those quantities',
+            'shortages' => $shortages,
+        ], 409);
     }
 
     if (!$lines) {
