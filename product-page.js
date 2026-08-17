@@ -585,7 +585,17 @@ document.addEventListener('DOMContentLoaded', async () => {
     rows.appendChild(detailRow('Category', product.category));
     details.appendChild(rows);
 
-    infoCol.append(category, heading, ratingRow, buyBox, tabBar, details);
+    // Category and title on the left, rating pushed to the right edge on the
+    // same line, so the top of the column reads as one balanced row.
+    const titleBlock = document.createElement('div');
+    titleBlock.className = 'product-title-block';
+    titleBlock.append(category, heading);
+
+    const headerRow = document.createElement('div');
+    headerRow.className = 'product-header';
+    headerRow.append(titleBlock, ratingRow);
+
+    infoCol.append(headerRow, buyBox, tabBar, details);
     top.append(mediaCol, infoCol);
 
     /* ---- tab panels, full width under the two columns ---- */
