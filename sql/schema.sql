@@ -68,7 +68,15 @@ CREATE TABLE IF NOT EXISTS products (
     name        VARCHAR(200) NOT NULL,
     price       DECIMAL(10, 2) NOT NULL DEFAULT 0.00,
     category    VARCHAR(80)  NOT NULL DEFAULT '',
+    sku         VARCHAR(64)  NOT NULL DEFAULT '',
     blurb       TEXT         NULL,
+    material    VARCHAR(300) NOT NULL DEFAULT '',
+    origin      VARCHAR(120) NOT NULL DEFAULT '',
+    weight      VARCHAR(60)  NOT NULL DEFAULT '',
+    care        TEXT         NULL,
+    -- JSON array of {label, value} for characteristics the admin invents,
+    -- so a new one does not need a schema change
+    specs       TEXT         NULL,
     -- Optional external image; when empty the drawn SVG below is shown
     image_url   VARCHAR(1000) NOT NULL DEFAULT '',
     icon_color  VARCHAR(32)  NOT NULL DEFAULT '#555555',
@@ -116,6 +124,25 @@ CREATE TABLE IF NOT EXISTS messages (
     PRIMARY KEY (id),
     KEY idx_messages_status (status),
     CONSTRAINT fk_messages_user FOREIGN KEY (user_id)
+        REFERENCES users (id) ON DELETE SET NULL
+) ENGINE = InnoDB
+  DEFAULT CHARSET = utf8mb4
+  COLLATE = utf8mb4_unicode_ci;
+
+-- Customer reviews. The rating shown on a product is averaged from these once
+-- any exist, so the catalog stops relying on the seeded placeholder numbers.
+CREATE TABLE IF NOT EXISTS reviews (
+    id          INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    product_id  VARCHAR(64)  NOT NULL,
+    user_id     INT UNSIGNED NULL,
+    author_name VARCHAR(120) NOT NULL,
+    rating      TINYINT UNSIGNED NOT NULL,
+    body        TEXT NOT NULL,
+    created_at  TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    KEY idx_reviews_product (product_id, created_at),
+    UNIQUE KEY uniq_review_user_product (product_id, user_id),
+    CONSTRAINT fk_reviews_user FOREIGN KEY (user_id)
         REFERENCES users (id) ON DELETE SET NULL
 ) ENGINE = InnoDB
   DEFAULT CHARSET = utf8mb4

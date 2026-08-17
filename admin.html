@@ -110,6 +110,34 @@
                                 <label for="productBlurb">Description</label>
                                 <textarea id="productBlurb" rows="3"></textarea>
                             </div>
+
+                            <div class="form-row">
+                                <div class="form-field">
+                                    <label for="productSku">SKU</label>
+                                    <input type="text" id="productSku" placeholder="NH-001">
+                                </div>
+                                <div class="form-field">
+                                    <label for="productOrigin">Made in</label>
+                                    <input type="text" id="productOrigin" placeholder="Ukraine">
+                                </div>
+                                <div class="form-field">
+                                    <label for="productWeight">Weight</label>
+                                    <input type="text" id="productWeight" placeholder="450 g">
+                                </div>
+                            </div>
+                            <div class="form-field">
+                                <label for="productMaterial">Material</label>
+                                <input type="text" id="productMaterial" placeholder="80% cotton, 20% polyester">
+                            </div>
+                            <div class="form-field">
+                                <label for="productCare">Care instructions</label>
+                                <textarea id="productCare" rows="2" placeholder="Machine wash at 30°C, do not tumble dry."></textarea>
+                            </div>
+                            <div class="form-field">
+                                <label for="productSpecs">Extra specifications</label>
+                                <textarea id="productSpecs" rows="4" placeholder="Fit: Regular&#10;Pockets: 4&#10;Season: All year"></textarea>
+                                <span class="field-hint">One per line as <code>Label: Value</code>. These appear in the Specifications tab.</span>
+                            </div>
                             <p class="form-error" id="productError" role="alert"></p>
                             <div class="profile-actions">
                                 <button type="submit" class="btn btn-buy" id="productSubmit">Add product</button>
@@ -229,6 +257,15 @@
                     document.getElementById('productStock').value = p.stock;
                     document.getElementById('productImage').value = p.image_url || '';
                     document.getElementById('productBlurb').value = p.blurb || '';
+                    document.getElementById('productSku').value = p.sku || '';
+                    document.getElementById('productOrigin').value = p.origin || '';
+                    document.getElementById('productWeight').value = p.weight || '';
+                    document.getElementById('productMaterial').value = p.material || '';
+                    document.getElementById('productCare').value = p.care || '';
+                    // Stored as JSON; edited as one "Label: Value" per line
+                    document.getElementById('productSpecs').value = (p.specs || [])
+                        .map((s) => s.label + ': ' + s.value)
+                        .join('\n');
                     editorHeading.textContent = 'Editing: ' + p.name;
                     productSubmit.textContent = 'Save changes';
                     productReset.hidden = false;
@@ -328,7 +365,13 @@
                             price: document.getElementById('productPrice').value,
                             stock: document.getElementById('productStock').value,
                             image_url: document.getElementById('productImage').value.trim(),
-                            blurb: document.getElementById('productBlurb').value.trim()
+                            blurb: document.getElementById('productBlurb').value.trim(),
+                            sku: document.getElementById('productSku').value.trim(),
+                            origin: document.getElementById('productOrigin').value.trim(),
+                            weight: document.getElementById('productWeight').value.trim(),
+                            material: document.getElementById('productMaterial').value.trim(),
+                            care: document.getElementById('productCare').value.trim(),
+                            specs: document.getElementById('productSpecs').value
                         });
                         clearForm();
                         productConfirm.classList.add('show');

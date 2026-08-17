@@ -134,6 +134,57 @@ if ($action === 'save_product') {
     $stock = (int) ($body['stock'] ?? 0);
     $isNew = (bool) ($body['is_new'] ?? false);
 
+    $sku = trim((string) ($body['sku'] ?? ''));
+    $material = trim((string) ($body['material'] ?? ''));
+    $origin = trim((string) ($body['origin'] ?? ''));
+    $weight = trim((string) ($body['weight'] ?? ''));
+    $care = trim((string) ($body['care'] ?? ''));
+
+    if (mb_strlen($sku) > 64) {
+        json_error('SKU is too long');
+    }
+    if (mb_strlen($material) > 300) {
+        json_error('Material is too long');
+    }
+    if (mb_strlen($origin) > 120) {
+        json_error('Origin is too long');
+    }
+    if (mb_strlen($weight) > 60) {
+        json_error('Weight is too long');
+    }
+    if (mb_strlen($care) > 2000) {
+        json_error('Care instructions are too long');
+    }
+
+    // The admin types free-form characteristics as "Label: Value" lines; they
+    // are normalised here and stored as JSON, so the page never has to parse
+    // whatever was typed.
+    $specsRows = [];
+    $specsRaw = (string) ($body['specs'] ?? '');
+    if (mb_strlen($specsRaw) > 4000) {
+        json_error('Specifications are too long');
+    }
+    foreach (preg_split('~\r?\n~', $specsRaw) as $line) {
+        $line = trim($line);
+        if ($line === '') {
+            continue;
+        }
+        $parts = explode(':', $line, 2);
+        if (count($parts) !== 2) {
+            json_error('Each specification line must look like "Label: Value" — check: ' . $line);
+        }
+        $label = trim($parts[0]);
+        $value = trim($parts[1]);
+        if ($label === '' || $value === '') {
+            json_error('Each specification line must look like "Label: Value" — check: ' . $line);
+        }
+        if (count($specsRows) >= 30) {
+            json_error('Up to 30 specification lines');
+        }
+        $specsRows[] = ['label' => $label, 'value' => $value];
+    }
+    $specsJson = $specsRows ? json_encode($specsRows, JSON_UNESCAPED_UNICODE) : null;
+
     if ($name === '' || mb_strlen($name) > 200) {
         json_error('Product name is required');
     }
@@ -172,15 +223,23 @@ if ($action === 'save_product') {
         }
 
         $stmt = db()->prepare(
-            'INSERT INTO products (id, name, price, category, blurb, image_url, stock, active)
-             VALUES (?, ?, ?, ?, ?, ?, ?, 1)'
+            'INSERT INTO products
+                (id, name, price, category, sku, blurb, material, origin, weight,
+                 care, specs, image_url, stock, active)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)'
         );
         $stmt->execute([
             $id,
             $name,
             number_format($price, 2, '.', ''),
             $category,
+            $sku,
             $blurb,
+            $material,
+            $origin,
+            $weight,
+            $care,
+            $specsJson,
             $imageUrl,
             $stock,
         ]);
@@ -196,14 +255,22 @@ if ($action === 'save_product') {
 
     $stmt = db()->prepare(
         'UPDATE products
-            SET name = ?, price = ?, category = ?, blurb = ?, image_url = ?, stock = ?
+            SET name = ?, price = ?, category = ?, sku = ?, blurb = ?,
+                material = ?, origin = ?, weight = ?, care = ?, specs = ?,
+                image_url = ?, stock = ?
           WHERE id = ?'
     );
     $stmt->execute([
         $name,
         number_format($price, 2, '.', ''),
         $category,
+        $sku,
         $blurb,
+        $material,
+        $origin,
+        $weight,
+        $care,
+        $specsJson,
         $imageUrl,
         $stock,
         $id,
