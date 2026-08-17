@@ -268,8 +268,7 @@
                     document.getElementById('productMedia').value = (p.media || [])
                         .filter((m) => m.url !== p.image_url)
                         .map((m) => m.type === 'youtube' ? 'https://youtu.be/' + m.url : m.url)
-                        .join('
-');
+                        .join('\n');
                     document.getElementById('productSku').value = p.sku || '';
                     document.getElementById('productOrigin').value = p.origin || '';
                     document.getElementById('productWeight').value = p.weight || '';
