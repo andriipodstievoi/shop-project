@@ -209,16 +209,9 @@ if ($action === 'save_product') {
             json_error('Up to 12 gallery items');
         }
 
-        $type = 'image';
-        if (preg_match('~(?:youtube\.com/watch\?v=|youtu\.be/|youtube\.com/embed/)([A-Za-z0-9_-]{6,})~i', $line, $m)) {
-            // Stored as the bare id, so the page builds a clean embed URL
-            $mediaRows[] = ['type' => 'youtube', 'url' => $m[1]];
-            continue;
-        }
-        if (preg_match('~\.(mp4|webm|ogv|ogg|mov)(\?|$)~i', $line)) {
-            $type = 'video';
-        }
-        $mediaRows[] = ['type' => $type, 'url' => $line];
+        // Shared with the reader in catalog.php. YouTube links are reduced to
+        // the bare video id, so the page builds a clean embed URL.
+        $mediaRows[] = classify_media_url($line);
     }
     $mediaJson = $mediaRows ? json_encode($mediaRows, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) : null;
 

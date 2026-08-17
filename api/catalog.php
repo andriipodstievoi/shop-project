@@ -30,6 +30,25 @@ function decode_specs(?string $raw): array
     return $rows;
 }
 
+// Works out what a gallery link actually is. Shared by the admin endpoint
+// (on save) and by the reader below (on load), so the two can never disagree
+// about the same URL — an earlier version only knew watch?v=, youtu.be and
+// /embed/, so a Shorts link was silently stored as a photo.
+function classify_media_url(string $url): array
+{
+    $youtube = '~(?:youtube\.com|youtube-nocookie\.com|youtu\.be)'
+        . '(?:/watch\?(?:.*&)?v=|/embed/|/shorts/|/live/|/v/|/)'
+        . '([A-Za-z0-9_-]{6,})~i';
+
+    if (preg_match($youtube, $url, $m)) {
+        return ['type' => 'youtube', 'url' => $m[1]];
+    }
+    if (preg_match('~\.(mp4|webm|ogv|ogg|mov|m4v)(\?|#|$)~i', $url)) {
+        return ['type' => 'video', 'url' => $url];
+    }
+    return ['type' => 'image', 'url' => $url];
+}
+
 // Gallery items are stored as JSON; the type was worked out when the admin
 // saved them, so the page just renders what it is told.
 function decode_media(?string $raw, string $imageUrl): array
@@ -56,6 +75,15 @@ function decode_media(?string $raw, string $imageUrl): array
             if ($url === $imageUrl) {
                 continue; // already first
             }
+
+            // Rows written before the classifier understood a URL form are
+            // healed on read, so a product saved earlier does not need to be
+            // opened and saved again to start working.
+            if ($type === 'image') {
+                $items[] = classify_media_url($url);
+                continue;
+            }
+
             $items[] = ['type' => $type, 'url' => $url];
         }
     }
