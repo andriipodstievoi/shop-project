@@ -492,25 +492,140 @@ main {
 /* Photo left, actions and tabs right, both starting at the same line */
 .product-top {
     display: grid;
-    grid-template-columns: minmax(280px, 460px) 1fr;
+    grid-template-columns: minmax(0, 460px) minmax(0, 1fr);
     gap: 36px;
     align-items: start;
 }
 
-.product-media-box {
+/* Both tracks must be allowed to shrink. A grid track sized 1fr still refuses
+   to go below its content, so an oversized image widened the first column and
+   pushed the text column off the left edge of the screen. */
+.product-media,
+.product-info {
+    min-width: 0;
+}
+
+.product-info h1,
+.product-panel .product-blurb {
+    overflow-wrap: break-word;
+}
+
+/* ===== Gallery ===== */
+.gallery {
+    position: sticky;
+    top: 20px;
+    /* min-width: 0 lets the grid column shrink instead of being forced wide
+       by its contents, which is what pushed the text column off screen */
+    min-width: 0;
+}
+
+.gallery-stage {
     aspect-ratio: 1 / 1;
+    border: 1px solid #e3e6e6;
     border-radius: 12px;
+    background: #fff;
     display: flex;
     align-items: center;
     justify-content: center;
-    background: #f4f4f4;
-    position: sticky;
-    top: 20px;
+    overflow: hidden;
 }
 
-.product-media-box svg {
+.gallery-stage svg {
     width: 62%;
     height: 62%;
+}
+
+/* Fit whatever the URL points at into the square without cropping or
+   overflowing: "contain" keeps the whole product visible */
+.stage-image {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    display: block;
+}
+
+.stage-video {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    background: #000;
+}
+
+.stage-embed {
+    width: 100%;
+    height: 100%;
+    border: 0;
+    display: block;
+}
+
+.gallery-thumbs {
+    display: flex;
+    gap: 8px;
+    margin-top: 10px;
+    overflow-x: auto;
+    padding-bottom: 4px;
+}
+
+.gallery-thumb {
+    flex: 0 0 66px;
+    height: 66px;
+    padding: 0;
+    border: 1px solid #d5d9d9;
+    border-radius: 8px;
+    background: #fff;
+    cursor: pointer;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.gallery-thumb:hover {
+    border-color: #999;
+}
+
+.gallery-thumb.active {
+    border-color: #ffa41c;
+    box-shadow: 0 0 0 2px #ffe4b5;
+}
+
+.gallery-thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+.thumb-play {
+    font-size: 18px;
+    color: #0f1111;
+}
+
+/* ===== Buy box ===== */
+.buy-box {
+    border: 1px solid #e3e6e6;
+    border-radius: 10px;
+    padding: 16px 18px;
+    margin: 16px 0 22px;
+    background: #fff;
+}
+
+.buy-box .price {
+    margin: 0 0 4px;
+}
+
+.buy-box .stock-line {
+    margin: 0 0 14px;
+}
+
+.buy-box .product-actions {
+    margin: 0;
+}
+
+.buy-box .add-cart-btn,
+.buy-box .btn-disabled {
+    flex: 1;
+    justify-content: center;
 }
 
 .product-info h1 {
@@ -828,9 +943,10 @@ main {
         gap: 22px;
     }
 
-    .product-media-box {
+    /* Nothing to stick to once the columns stack */
+    .gallery {
         position: static;
-        max-width: 420px;
+        max-width: 460px;
     }
 }
 

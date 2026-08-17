@@ -30,6 +30,39 @@ function decode_specs(?string $raw): array
     return $rows;
 }
 
+// Gallery items are stored as JSON; the type was worked out when the admin
+// saved them, so the page just renders what it is told.
+function decode_media(?string $raw, string $imageUrl): array
+{
+    $items = [];
+
+    // The single image_url is always the first slide, so the catalog thumbnail
+    // and the gallery cannot disagree
+    if ($imageUrl !== '') {
+        $items[] = ['type' => 'image', 'url' => $imageUrl];
+    }
+
+    $parsed = $raw === null || trim($raw) === '' ? [] : json_decode($raw, true);
+    if (is_array($parsed)) {
+        foreach ($parsed as $item) {
+            if (!is_array($item)) {
+                continue;
+            }
+            $url = trim((string) ($item['url'] ?? ''));
+            $type = (string) ($item['type'] ?? 'image');
+            if ($url === '' || !in_array($type, ['image', 'video', 'youtube'], true)) {
+                continue;
+            }
+            if ($url === $imageUrl) {
+                continue; // already first
+            }
+            $items[] = ['type' => $type, 'url' => $url];
+        }
+    }
+
+    return $items;
+}
+
 function product_row_to_array(array $row): array
 {
     // Real reviews win over the seeded placeholder numbers once they exist
@@ -49,6 +82,7 @@ function product_row_to_array(array $row): array
         'care' => (string) ($row['care'] ?? ''),
         'specs' => decode_specs($row['specs'] ?? null),
         'image_url' => (string) $row['image_url'],
+        'media' => decode_media($row['media'] ?? null, (string) $row['image_url']),
         'rating' => $reviewCount > 0 ? round((float) $reviewAvg, 1) : (float) $row['rating'],
         'reviews' => $reviewCount > 0 ? $reviewCount : (int) $row['reviews'],
         'has_real_reviews' => $reviewCount > 0,

@@ -185,6 +185,43 @@ if ($action === 'save_product') {
     }
     $specsJson = $specsRows ? json_encode($specsRows, JSON_UNESCAPED_UNICODE) : null;
 
+    // Gallery: one URL per line. The type is decided here rather than in the
+    // browser, so the page never has to guess what it is rendering.
+    $mediaRows = [];
+    $mediaRaw = (string) ($body['media'] ?? '');
+    if (mb_strlen($mediaRaw) > 4000) {
+        json_error('Gallery list is too long');
+    }
+    foreach (preg_split('~\r?\n~', $mediaRaw) as $line) {
+        $line = trim($line);
+        if ($line === '') {
+            continue;
+        }
+        // Only plain web URLs: a javascript: or data: URL would end up in a
+        // src attribute on every visitor's page
+        if (!preg_match('~^https?://~i', $line)) {
+            json_error('Each gallery line must be a http:// or https:// link — check: ' . $line);
+        }
+        if (mb_strlen($line) > 1000) {
+            json_error('One of the gallery links is too long');
+        }
+        if (count($mediaRows) >= 12) {
+            json_error('Up to 12 gallery items');
+        }
+
+        $type = 'image';
+        if (preg_match('~(?:youtube\.com/watch\?v=|youtu\.be/|youtube\.com/embed/)([A-Za-z0-9_-]{6,})~i', $line, $m)) {
+            // Stored as the bare id, so the page builds a clean embed URL
+            $mediaRows[] = ['type' => 'youtube', 'url' => $m[1]];
+            continue;
+        }
+        if (preg_match('~\.(mp4|webm|ogv|ogg|mov)(\?|$)~i', $line)) {
+            $type = 'video';
+        }
+        $mediaRows[] = ['type' => $type, 'url' => $line];
+    }
+    $mediaJson = $mediaRows ? json_encode($mediaRows, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) : null;
+
     if ($name === '' || mb_strlen($name) > 200) {
         json_error('Product name is required');
     }
@@ -225,8 +262,8 @@ if ($action === 'save_product') {
         $stmt = db()->prepare(
             'INSERT INTO products
                 (id, name, price, category, sku, blurb, material, origin, weight,
-                 care, specs, image_url, stock, active)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)'
+                 care, specs, image_url, media, stock, active)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)'
         );
         $stmt->execute([
             $id,
@@ -241,6 +278,7 @@ if ($action === 'save_product') {
             $care,
             $specsJson,
             $imageUrl,
+            $mediaJson,
             $stock,
         ]);
 
@@ -257,7 +295,7 @@ if ($action === 'save_product') {
         'UPDATE products
             SET name = ?, price = ?, category = ?, sku = ?, blurb = ?,
                 material = ?, origin = ?, weight = ?, care = ?, specs = ?,
-                image_url = ?, stock = ?
+                image_url = ?, media = ?, stock = ?
           WHERE id = ?'
     );
     $stmt->execute([
@@ -272,6 +310,7 @@ if ($action === 'save_product') {
         $care,
         $specsJson,
         $imageUrl,
+        $mediaJson,
         $stock,
         $id,
     ]);

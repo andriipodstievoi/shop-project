@@ -60,6 +60,106 @@ function detailRow(label, value) {
     return row;
 }
 
+/* ---------------- media gallery ---------------- */
+
+// Renders one gallery item into the main stage. Every branch keeps the item
+// inside the fixed square, so a portrait photo from an unknown URL cannot
+// stretch the column and push the text out of view.
+function renderStage(stage, item, product) {
+    stage.innerHTML = '';
+
+    if (!item) {
+        fillProductMedia(stage, product);
+        return;
+    }
+
+    if (item.type === 'youtube') {
+        const frame = document.createElement('iframe');
+        frame.className = 'stage-embed';
+        frame.src = 'https://www.youtube.com/embed/' + encodeURIComponent(item.url);
+        frame.title = product.name + ' video';
+        frame.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; picture-in-picture';
+        frame.allowFullscreen = true;
+        frame.loading = 'lazy';
+        stage.appendChild(frame);
+        return;
+    }
+
+    if (item.type === 'video') {
+        const video = document.createElement('video');
+        video.className = 'stage-video';
+        video.src = item.url;
+        video.controls = true;
+        video.preload = 'metadata';
+        stage.appendChild(video);
+        return;
+    }
+
+    const img = document.createElement('img');
+    img.className = 'stage-image';
+    img.src = item.url;
+    img.alt = product.name;
+    img.addEventListener('error', () => {
+        // A dead link falls back to the drawn illustration
+        fillProductMedia(stage, product);
+    });
+    stage.appendChild(img);
+}
+
+function buildGallery(product) {
+    const wrap = document.createElement('div');
+    wrap.className = 'gallery';
+
+    const stage = document.createElement('div');
+    stage.className = 'gallery-stage';
+
+    const items = product.media || [];
+    renderStage(stage, items[0] || null, product);
+    wrap.appendChild(stage);
+
+    // A single item needs no thumbnails
+    if (items.length < 2) {
+        return wrap;
+    }
+
+    const thumbs = document.createElement('div');
+    thumbs.className = 'gallery-thumbs';
+
+    items.forEach((item, index) => {
+        const thumb = document.createElement('button');
+        thumb.type = 'button';
+        thumb.className = 'gallery-thumb' + (index === 0 ? ' active' : '');
+        thumb.setAttribute('aria-label', 'View item ' + (index + 1));
+
+        if (item.type === 'image') {
+            const img = document.createElement('img');
+            img.src = item.url;
+            img.alt = '';
+            img.loading = 'lazy';
+            thumb.appendChild(img);
+        } else {
+            // Video thumbnails are a play glyph rather than a frame grab: the
+            // YouTube still would need another request and a direct .mp4 has
+            // no thumbnail at all
+            const play = document.createElement('span');
+            play.className = 'thumb-play';
+            play.textContent = '▶';
+            thumb.appendChild(play);
+        }
+
+        thumb.addEventListener('click', () => {
+            renderStage(stage, item, product);
+            thumbs.querySelectorAll('.gallery-thumb').forEach((t) => t.classList.remove('active'));
+            thumb.classList.add('active');
+        });
+
+        thumbs.appendChild(thumb);
+    });
+
+    wrap.appendChild(thumbs);
+    return wrap;
+}
+
 /* ---------------- horizontal product strip ---------------- */
 
 function buildStrip(products, heading) {
@@ -367,10 +467,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     const mediaCol = document.createElement('div');
     mediaCol.className = 'product-media';
-    const mediaBox = document.createElement('div');
-    mediaBox.className = 'product-media-box';
-    fillProductMedia(mediaBox, product);
-    mediaCol.appendChild(mediaBox);
+    mediaCol.appendChild(buildGallery(product));
 
     const infoCol = document.createElement('div');
     infoCol.className = 'product-info';
@@ -419,9 +516,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     wishBtn.dataset.id = product.id;
     wishBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20s-7-4.35-9.5-8.5C1 8 2.5 4.5 6 4.5c2 0 3.5 1.2 4.5 2.8 1-1.6 2.5-2.8 4.5-2.8 3.5 0 5 3.5 3.5 7-2.5 4.15-9.5 8.5-9.5 8.5z"/></svg>';
 
+    // Price, availability and the actions live in one bordered block, so the
+    // buying decision is visually separate from the reading material below.
+    const buyBox = document.createElement('div');
+    buyBox.className = 'buy-box';
+
     const actions = document.createElement('div');
     actions.className = 'product-actions';
     actions.append(addBtn, wishBtn);
+
+    buyBox.append(price, stockLine, actions);
 
     /* ---- tab buttons, level with the top of the photo ---- */
 
@@ -481,7 +585,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     rows.appendChild(detailRow('Category', product.category));
     details.appendChild(rows);
 
-    infoCol.append(category, heading, ratingRow, price, stockLine, actions, tabBar, details);
+    infoCol.append(category, heading, ratingRow, buyBox, tabBar, details);
     top.append(mediaCol, infoCol);
 
     /* ---- tab panels, full width under the two columns ---- */

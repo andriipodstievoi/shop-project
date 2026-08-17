@@ -77,8 +77,12 @@ CREATE TABLE IF NOT EXISTS products (
     -- JSON array of {label, value} for characteristics the admin invents,
     -- so a new one does not need a schema change
     specs       TEXT         NULL,
-    -- Optional external image; when empty the drawn SVG below is shown
+    -- Optional external image; when empty the drawn SVG below is shown.
+    -- Doubles as the thumbnail used on catalog cards.
     image_url   VARCHAR(1000) NOT NULL DEFAULT '',
+    -- Gallery for the product page: JSON array of {type, url} where type is
+    -- image, video or youtube
+    media       TEXT         NULL,
     icon_color  VARCHAR(32)  NOT NULL DEFAULT '#555555',
     icon_bg     VARCHAR(200) NOT NULL DEFAULT '#eeeeee',
     icon_svg    TEXT         NULL,
