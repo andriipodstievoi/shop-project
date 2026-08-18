@@ -1,4 +1,14 @@
 /* ===== Base ===== */
+
+/* The hidden attribute only hides through the browser's default stylesheet,
+   which any author rule setting display silently beats. That is why the admin
+   link stayed visible for ordinary accounts despite being marked hidden: a few
+   lines below, .account-link sets display: flex. This makes hidden mean hidden
+   everywhere, including .strip-nav and anything added later. */
+[hidden] {
+    display: none !important;
+}
+
 body {
     margin: 0;
     font-family: Arial, sans-serif;
