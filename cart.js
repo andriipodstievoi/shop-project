@@ -67,7 +67,7 @@ function getProduct(id) {
 }
 
 function goToProduct(id) {
-    window.location.href = 'empty.html?id=' + encodeURIComponent(id);
+    window.location.href = 'product.html?id=' + encodeURIComponent(id);
 }
 
 function formatPrice(value) {

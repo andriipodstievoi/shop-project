@@ -2,7 +2,7 @@
 // description below, then a "similar products" strip and a "recently viewed"
 // strip built from this browser's own history.
 //
-// Loaded by empty.html after auth.js and cart.js.
+// Loaded by product.html after auth.js and cart.js.
 
 const RECENT_KEY = 'shop_recent';
 const RECENT_MAX = 12;
