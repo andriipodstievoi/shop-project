@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Shop</title>
+    <title>Sign in</title>
     <link rel="stylesheet" href="css_main.css?v=3">
 </head>
 
@@ -25,15 +25,6 @@
                 Shop
             </a>
         </div>
-
-        <form class="search-bar" id="catalogSearchForm" role="search">
-            <label class="visually-hidden" for="catalogSearch">Search products</label>
-            <input type="search" id="catalogSearch" placeholder="Search products" autocomplete="off">
-            <button type="submit" class="search-submit" aria-label="Search">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
-            </button>
-        </form>
-
         <div class="header-icons">
             <div class="icon-btn">
                 <a href="wishlist.html" aria-label="Wishlist">
@@ -59,39 +50,58 @@
     </header>
 
     <main>
-        <div class="catalog-layout">
+        <div class="auth-page">
+            <div class="profile-card">
+                <h1>Sign in</h1>
 
-            <aside class="catalog-sidebar">
-                <h2 class="sidebar-heading">Department</h2>
-                <ul class="category-list" id="categoryList"></ul>
-            </aside>
-
-            <section class="catalog-main">
-                <div class="catalog-results-bar">
-                    <div class="results-info">
-                        <span id="resultsCount"></span>
-                        <span id="activeQuery" class="active-query"></span>
+                <form id="loginForm" novalidate>
+                    <div class="form-field">
+                        <label for="loginEmail">Email</label>
+                        <input type="email" id="loginEmail" autocomplete="email" required>
                     </div>
-                    <div class="sort-control">
-                        <label for="catalogSort">Sort by:</label>
-                        <select id="catalogSort">
-                            <option value="featured">Featured</option>
-                            <option value="price-asc">Price: Low to High</option>
-                            <option value="price-desc">Price: High to Low</option>
-                            <option value="rating">Avg. Customer Review</option>
-                        </select>
+                    <div class="form-field">
+                        <label for="loginPassword">Password</label>
+                        <input type="password" id="loginPassword" autocomplete="current-password" required>
                     </div>
-                </div>
 
-                <div class="catalog-grid" id="catalogGrid"></div>
-            </section>
+                    <p class="form-error" id="loginError" role="alert"></p>
 
+                    <button type="submit" class="btn btn-buy" id="loginSubmit">Sign in</button>
+                </form>
+
+                <p class="auth-switch">
+                    New here? <a href="register.html">Create an account</a>
+                </p>
+            </div>
         </div>
     </main>
 
     <script src="auth.js?v=3"></script>
     <script src="cart.js?v=3"></script>
-    <script src="catalog.js?v=3"></script>
+    <script>
+        const form = document.getElementById('loginForm');
+        const errorEl = document.getElementById('loginError');
+        const submitBtn = document.getElementById('loginSubmit');
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            errorEl.textContent = '';
+            submitBtn.disabled = true;
+
+            try {
+                await Auth.login(
+                    document.getElementById('loginEmail').value.trim(),
+                    document.getElementById('loginPassword').value
+                );
+                // Anything collected while signed out follows the visitor in
+                await Store.mergeGuestIntoAccount();
+                window.location.href = 'account.html';
+            } catch (err) {
+                errorEl.textContent = err.message;
+                submitBtn.disabled = false;
+            }
+        });
+    </script>
 
 </body>
 

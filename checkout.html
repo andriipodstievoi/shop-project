@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Checkout</title>
+    <link rel="stylesheet" href="css_main.css?v=3">
+</head>
+
+<body>
+
+    <header>
+        <div class="header-left">
+            <button type="button" class="back-btn" onclick="history.back()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5M11 18l-6-6 6-6"/></svg>
+                Back
+            </button>
+            <a href="index.html" class="back-btn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/></svg>
+                Home
+            </a>
+            <a href="products.html" class="back-btn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+                Shop
+            </a>
+        </div>
+        <div class="header-icons">
+            <div class="icon-btn">
+                <a href="wishlist.html" aria-label="Wishlist">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20s-7-4.35-9.5-8.5C1 8 2.5 4.5 6 4.5c2 0 3.5 1.2 4.5 2.8 1-1.6 2.5-2.8 4.5-2.8 3.5 0 5 3.5 3.5 7-2.5 4.15-9.5 8.5-9.5 8.5z"/></svg>
+                </a>
+            </div>
+            <div class="icon-btn">
+                <a href="cart.html" aria-label="Cart">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="21" r="1"/><circle cx="18" cy="21" r="1"/><path d="M2.5 3h2l2.4 12.2a2 2 0 0 0 2 1.6h8.4a2 2 0 0 0 2-1.6L21 7H6"/></svg>
+                    <span class="cart-badge">0</span>
+                </a>
+            </div>
+            <div class="icon-btn">
+                <a href="account.html" aria-label="Account">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="3.5"/><path d="M4.5 20c1-4 4.5-6 7.5-6s6.5 2 7.5 6"/></svg>
+                </a>
+            </div>
+            <a href="contact.html" class="back-btn header-contact">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v14H4z"/><path d="M4 6l8 6 8-6"/></svg>
+                Contact
+            </a>
+        </div>
+    </header>
+
+    <main>
+        <div class="cart-page">
+            <h1>Checkout</h1>
+
+            <p id="checkoutLoading" class="account-loading">Loading…</p>
+
+            <!-- Not signed in -->
+            <section class="profile-card" id="checkoutSignedOut" hidden>
+                <p>You need an account to place an order, so you can track it afterwards.</p>
+                <div class="profile-actions">
+                    <a href="login.html" class="btn btn-buy">Sign in</a>
+                    <a href="register.html" class="btn btn-outline">Create account</a>
+                </div>
+            </section>
+
+            <div id="checkoutArea" hidden>
+                <div id="checkoutItems"></div>
+
+                <div class="cart-summary">
+                    <span>Total</span>
+                    <span id="checkoutTotal">$0.00</span>
+                </div>
+
+                <section class="profile-card checkout-form">
+                    <h2>Delivery details</h2>
+                    <form id="checkoutForm">
+                        <div class="form-field">
+                            <label for="contactName">Full name</label>
+                            <input type="text" id="contactName" required>
+                        </div>
+                        <div class="form-field">
+                            <label for="contactPhone">Phone</label>
+                            <input type="tel" id="contactPhone" placeholder="+380 00 000 0000">
+                        </div>
+                        <div class="form-field">
+                            <label for="country">Country</label>
+                            <select id="country" required></select>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-field">
+                                <label for="city">City</label>
+                                <input type="text" id="city" required>
+                            </div>
+                            <div class="form-field">
+                                <label for="postalCode">Postal code</label>
+                                <input type="text" id="postalCode" placeholder="01001">
+                            </div>
+                        </div>
+
+                        <div class="form-field">
+                            <label for="address">Street address</label>
+                            <textarea id="address" rows="2" required placeholder="Street, building, apartment"></textarea>
+                        </div>
+
+                        <h2 class="delivery-heading">Delivery method</h2>
+                        <div class="delivery-options" id="deliveryOptions"></div>
+
+                        <div class="checkout-totals">
+                            <div><span>Items</span><span id="sumItems">$0.00</span></div>
+                            <div><span>Delivery</span><span id="sumShipping">$0.00</span></div>
+                            <div class="grand"><span>Total</span><span id="sumTotal">$0.00</span></div>
+                        </div>
+
+                        <p class="field-hint">
+                            No online payment: we contact you to confirm the order and arrange payment.
+                        </p>
+
+                        <!-- Sits directly above the button, because that is
+                             where the customer is looking when it matters -->
+                        <div class="shortage-notice" id="shortageNotice" role="alert" hidden></div>
+
+                        <p class="form-error" id="checkoutError" role="alert"></p>
+
+                        <button type="submit" class="btn btn-buy" id="placeOrderBtn">Place order</button>
+                    </form>
+                </section>
+            </div>
+
+            <!-- Success -->
+            <section class="profile-card order-success" id="orderSuccess" hidden>
+                <h2>Order placed</h2>
+                <p id="orderSuccessText"></p>
+                <div class="profile-actions">
+                    <a href="orders.html" class="btn btn-buy">View my orders</a>
+                    <a href="products.html" class="btn btn-outline">Keep shopping</a>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <script src="auth.js?v=3"></script>
+    <script src="cart.js?v=3"></script>
+    <script src="orders-ui.js?v=3"></script>
+    <script>
+        (async () => {
+            const loading = document.getElementById('checkoutLoading');
+            const signedOut = document.getElementById('checkoutSignedOut');
+            const area = document.getElementById('checkoutArea');
+            const success = document.getElementById('orderSuccess');
+
+            await loadCatalog();
+            const user = await Auth.load();
+            loading.hidden = true;
+
+            if (!user) {
+                signedOut.hidden = false;
+                return;
+            }
+
+            const cart = await Store.cart();
+            if (cart.length === 0) {
+                const empty = document.createElement('p');
+                empty.className = 'cart-empty';
+                empty.textContent = 'Your cart is empty. ';
+                const link = document.createElement('a');
+                link.href = 'products.html';
+                link.textContent = 'Browse products';
+                empty.appendChild(link);
+                document.querySelector('.cart-page').appendChild(empty);
+                return;
+            }
+
+            area.hidden = false;
+
+            // Order summary, priced from the catalog
+            const itemsEl = document.getElementById('checkoutItems');
+            const shortageBox = document.getElementById('shortageNotice');
+            let total = 0;
+            let blocked = false;
+
+            cart.forEach((item) => {
+                const product = getProduct(item.id);
+                if (!product) return;
+                total += product.price * item.qty;
+
+                const row = document.createElement('div');
+                row.className = 'cart-item';
+                row.appendChild(buildItemMedia(product, formatPrice(product.price) + ' each'));
+
+                const qty = document.createElement('div');
+                qty.className = 'qty-value';
+                qty.textContent = '×' + item.qty;
+
+                const lineTotal = document.createElement('div');
+                lineTotal.className = 'cart-item-total';
+                lineTotal.textContent = formatPrice(product.price * item.qty);
+
+                row.append(qty, lineTotal);
+
+                // Warn before the customer fills in the form, not after they
+                // press the button. The server still re-checks on submit.
+                const available = Number(product.stock);
+                if (available < item.qty) {
+                    blocked = true;
+                    row.classList.add('cart-item-short');
+                    const warn = document.createElement('div');
+                    warn.className = 'line-shortage';
+                    warn.textContent = available === 0
+                        ? 'Out of stock — you asked for ' + item.qty
+                        : 'You asked for ' + item.qty + ', only ' + available + ' in stock';
+                    row.appendChild(warn);
+                }
+
+                itemsEl.appendChild(row);
+            });
+            document.getElementById('checkoutTotal').textContent = formatPrice(total);
+
+            // Renders the per-product detail the API returns with a 409
+            function showShortages(list) {
+                shortageBox.innerHTML = '';
+                if (!list || !list.length) {
+                    shortageBox.hidden = true;
+                    return;
+                }
+
+                const title = document.createElement('p');
+                title.className = 'shortage-title';
+                title.textContent = list.length === 1
+                    ? 'One item is not available in the quantity you chose:'
+                    : 'Some items are not available in the quantities you chose:';
+                shortageBox.appendChild(title);
+
+                const ul = document.createElement('ul');
+                list.forEach((s) => {
+                    const li = document.createElement('li');
+
+                    const name = document.createElement('strong');
+                    name.textContent = s.name;
+
+                    const detail = document.createElement('span');
+                    detail.textContent = s.available === 0
+                        ? ' — out of stock, you asked for ' + s.requested
+                        : ' — you asked for ' + s.requested + ', only ' + s.available + ' in stock';
+
+                    li.append(name, detail);
+                    ul.appendChild(li);
+                });
+                shortageBox.appendChild(ul);
+
+                const hint = document.createElement('p');
+                hint.className = 'shortage-hint';
+                hint.textContent = 'Adjust the quantities in your cart and come back.';
+                const link = document.createElement('a');
+                link.href = 'cart.html';
+                link.className = 'btn btn-outline';
+                link.textContent = 'Go to cart';
+                shortageBox.append(hint, link);
+
+                shortageBox.hidden = false;
+            }
+
+            if (blocked) {
+                showShortages(cart
+                    .map((item) => {
+                        const p = getProduct(item.id);
+                        return p && Number(p.stock) < item.qty
+                            ? { name: p.name, requested: item.qty, available: Number(p.stock) }
+                            : null;
+                    })
+                    .filter(Boolean));
+            }
+
+            // Prefill from the saved profile
+            document.getElementById('contactName').value = user.name || '';
+            document.getElementById('contactPhone').value = user.phone || '';
+
+            // Countries come from the server, which also validates the choice
+            const countrySelect = document.getElementById('country');
+            const countries = await (await fetch('api/countries.php', { credentials: 'same-origin' })).json();
+            const placeholder = document.createElement('option');
+            placeholder.value = '';
+            placeholder.textContent = 'Select a country…';
+            countrySelect.appendChild(placeholder);
+            (countries.countries || []).forEach((c) => {
+                const opt = document.createElement('option');
+                opt.value = c;
+                opt.textContent = c;
+                countrySelect.appendChild(opt);
+            });
+
+            // Delivery options, priced and dated by the server
+            const optionsEl = document.getElementById('deliveryOptions');
+            let chosenMethod = null;
+
+            function refreshTotals() {
+                const shipping = chosenMethod ? Number(SHIPPING_METHODS[chosenMethod].cost) : 0;
+                document.getElementById('sumItems').textContent = formatPrice(total);
+                document.getElementById('sumShipping').textContent = formatPrice(shipping);
+                document.getElementById('sumTotal').textContent = formatPrice(total + shipping);
+            }
+
+            Object.values(SHIPPING_METHODS).forEach((method, index) => {
+                const label = document.createElement('label');
+                label.className = 'delivery-option';
+
+                const radio = document.createElement('input');
+                radio.type = 'radio';
+                radio.name = 'delivery';
+                radio.value = method.key;
+                if (index === 0) {
+                    radio.checked = true;
+                    chosenMethod = method.key;
+                }
+                radio.addEventListener('change', () => {
+                    chosenMethod = method.key;
+                    refreshTotals();
+                });
+
+                const text = document.createElement('div');
+                const title = document.createElement('div');
+                title.className = 'delivery-title';
+                title.textContent = method.label;
+                const note = document.createElement('div');
+                note.className = 'delivery-note';
+                note.textContent = method.note + ' · ' + method.days_min + '–' + method.days_max + ' working days';
+                text.append(title, note);
+
+                const cost = document.createElement('div');
+                cost.className = 'delivery-cost';
+                cost.textContent = Number(method.cost) === 0 ? 'Free' : formatPrice(Number(method.cost));
+
+                label.append(radio, text, cost);
+                optionsEl.appendChild(label);
+            });
+
+            refreshTotals();
+
+            const form = document.getElementById('checkoutForm');
+            const errorEl = document.getElementById('checkoutError');
+            const btn = document.getElementById('placeOrderBtn');
+
+            form.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                errorEl.textContent = '';
+                btn.disabled = true;
+
+                try {
+                    const data = await Auth.post('api/orders.php', {
+                        action: 'create',
+                        contact_name: document.getElementById('contactName').value.trim(),
+                        contact_phone: document.getElementById('contactPhone').value.trim(),
+                        country: countrySelect.value,
+                        city: document.getElementById('city').value.trim(),
+                        postal_code: document.getElementById('postalCode').value.trim(),
+                        address: document.getElementById('address').value.trim(),
+                        delivery_method: chosenMethod
+                    });
+
+                    area.hidden = true;
+                    success.hidden = false;
+
+                    const order = data.order;
+                    const eta = order.eta_from && order.eta_to
+                        ? ' Estimated delivery between ' + formatOrderDate(order.eta_from, true) +
+                          ' and ' + formatOrderDate(order.eta_to, true) + '.'
+                        : '';
+                    document.getElementById('orderSuccessText').textContent =
+                        'Order #' + order.id + ' for ' + formatPrice(order.total) +
+                        ' has been received.' + eta + ' We will contact you to confirm it.';
+                    await updateCartBadge();
+                } catch (err) {
+                    errorEl.textContent = err.message;
+
+                    // The API names every product that ran short, so show the
+                    // whole list rather than a bare sentence
+                    if (err.data && err.data.shortages) {
+                        showShortages(err.data.shortages);
+                        shortageBox.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }
+
+                    btn.disabled = false;
+                }
+            });
+        })();
+    </script>
+
+</body>
+
+</html>

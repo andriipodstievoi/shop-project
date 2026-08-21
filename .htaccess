@@ -1,0 +1,115 @@
+# Apache rules for shared hosting.
+#
+# Defence in depth: config.php returns an array and prints nothing even when
+# requested directly, but if PHP were ever misconfigured and served as plain
+# text, these rules still keep the database password out of a browser.
+#
+# Each block is wrapped in an IfModule test so the file works on both Apache
+# 2.4 (mod_authz_core) and 2.2. An unguarded "Require" directive would return
+# 500 for the whole site on 2.2.
+
+Options -Indexes
+
+# --- Database credentials ---
+<Files "config.php">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order allow,deny
+        Deny from all
+    </IfModule>
+</Files>
+
+# --- Shared includes, not endpoints ---
+<FilesMatch "^(db|auth|catalog|orders_lib)\.php$">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order allow,deny
+        Deny from all
+    </IfModule>
+</FilesMatch>
+
+# --- Schema and documentation ---
+<FilesMatch "\.(sql|md)$">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order allow,deny
+        Deny from all
+    </IfModule>
+</FilesMatch>
+
+# --- Security headers ---
+#
+# None of these hide the source: front-end code is delivered to the browser and
+# is readable by design. They close specific attacks instead.
+<IfModule mod_headers.c>
+    # Stop the browser second-guessing a declared content type, which is how an
+    # uploaded file ends up executed as a script
+    Header always set X-Content-Type-Options "nosniff"
+
+    # Nobody may frame this site. Clickjacking works by laying an invisible
+    # frame of our checkout over an attacker's page.
+    Header always set X-Frame-Options "SAMEORIGIN"
+
+    # Send only the origin to other sites, never the full path a visitor was on
+    Header always set Referrer-Policy "strict-origin-when-cross-origin"
+
+    # Hardware the shop has no use for
+    Header always set Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=()"
+
+    # A deliberately partial CSP.
+    #
+    # script-src carries 'unsafe-inline' because the pages still run inline
+    # <script> blocks, and a policy without it blocks every one of them — the
+    # first draft of this file did exactly that and left the site dead. It is
+    # spelled out rather than inherited from default-src so the compromise is
+    # visible instead of hidden.
+    #
+    # So this policy is not the XSS defence: that is the DOM built with
+    # textContent in cart.js and product-page.js. What it does buy is a ban on
+    # plugins, on rewriting the document base, on being framed by another site,
+    # and on posting our forms elsewhere. Dropping 'unsafe-inline' is the point
+    # of moving the inline scripts into files.
+    Header always set Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' https: data:; media-src 'self' https:; frame-src https://www.youtube.com https://www.youtube-nocookie.com; connect-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'self'; form-action 'self'"
+</IfModule>
+
+# --- Freshness ---
+#
+# "no-cache" does not mean "never store": the browser keeps its copy but must
+# ask the server whether it is still current before using it. When nothing
+# changed the server answers 304 with no body, so pages stay fast while never
+# being stale. That is what we want here, because a visitor holding an old
+# page against a new API is the source of the confusing bugs.
+#
+# "no-store" on the API is stricter: cart and account responses are per-user
+# and must never be reused at all.
+<IfModule mod_headers.c>
+    <FilesMatch "\.html$">
+        Header set Cache-Control "no-cache, must-revalidate"
+    </FilesMatch>
+
+    <FilesMatch "\.(css|js|json)$">
+        Header set Cache-Control "no-cache, must-revalidate"
+    </FilesMatch>
+
+    <FilesMatch "\.php$">
+        Header set Cache-Control "no-store, no-cache, must-revalidate, max-age=0"
+        Header set Pragma "no-cache"
+    </FilesMatch>
+</IfModule>
+
+# Some hosts set a default expiry for static files; this overrides it, since
+# a far-future Expires header would defeat the revalidation above.
+<IfModule mod_expires.c>
+    ExpiresActive On
+    ExpiresByType text/html "access plus 0 seconds"
+    ExpiresByType text/css "access plus 0 seconds"
+    ExpiresByType application/javascript "access plus 0 seconds"
+    ExpiresByType text/javascript "access plus 0 seconds"
+    ExpiresByType application/json "access plus 0 seconds"
+</IfModule>

@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Shop</title>
+    <title>Create account</title>
     <link rel="stylesheet" href="css_main.css?v=3">
 </head>
 
@@ -25,15 +25,6 @@
                 Shop
             </a>
         </div>
-
-        <form class="search-bar" id="catalogSearchForm" role="search">
-            <label class="visually-hidden" for="catalogSearch">Search products</label>
-            <input type="search" id="catalogSearch" placeholder="Search products" autocomplete="off">
-            <button type="submit" class="search-submit" aria-label="Search">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
-            </button>
-        </form>
-
         <div class="header-icons">
             <div class="icon-btn">
                 <a href="wishlist.html" aria-label="Wishlist">
@@ -59,39 +50,76 @@
     </header>
 
     <main>
-        <div class="catalog-layout">
+        <div class="auth-page">
+            <div class="profile-card">
+                <h1>Create account</h1>
 
-            <aside class="catalog-sidebar">
-                <h2 class="sidebar-heading">Department</h2>
-                <ul class="category-list" id="categoryList"></ul>
-            </aside>
-
-            <section class="catalog-main">
-                <div class="catalog-results-bar">
-                    <div class="results-info">
-                        <span id="resultsCount"></span>
-                        <span id="activeQuery" class="active-query"></span>
+                <form id="registerForm" novalidate>
+                    <div class="form-field">
+                        <label for="regName">Name</label>
+                        <input type="text" id="regName" autocomplete="name" placeholder="Your name">
                     </div>
-                    <div class="sort-control">
-                        <label for="catalogSort">Sort by:</label>
-                        <select id="catalogSort">
-                            <option value="featured">Featured</option>
-                            <option value="price-asc">Price: Low to High</option>
-                            <option value="price-desc">Price: High to Low</option>
-                            <option value="rating">Avg. Customer Review</option>
-                        </select>
+                    <div class="form-field">
+                        <label for="regEmail">Email</label>
+                        <input type="email" id="regEmail" autocomplete="email" required>
                     </div>
-                </div>
+                    <div class="form-field">
+                        <label for="regPhone">Phone <span class="field-hint">(optional)</span></label>
+                        <input type="tel" id="regPhone" autocomplete="tel" placeholder="+380 00 000 0000">
+                    </div>
+                    <div class="form-field">
+                        <label for="regPassword">Password</label>
+                        <input type="password" id="regPassword" autocomplete="new-password" required>
+                        <span class="field-hint">At least 8 characters.</span>
+                    </div>
 
-                <div class="catalog-grid" id="catalogGrid"></div>
-            </section>
+                    <p class="form-error" id="registerError" role="alert"></p>
 
+                    <button type="submit" class="btn btn-buy" id="registerSubmit">Create account</button>
+                </form>
+
+                <p class="auth-switch">
+                    Already have an account? <a href="login.html">Sign in</a>
+                </p>
+            </div>
         </div>
     </main>
 
     <script src="auth.js?v=3"></script>
     <script src="cart.js?v=3"></script>
-    <script src="catalog.js?v=3"></script>
+    <script>
+        const form = document.getElementById('registerForm');
+        const errorEl = document.getElementById('registerError');
+        const submitBtn = document.getElementById('registerSubmit');
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            errorEl.textContent = '';
+
+            const password = document.getElementById('regPassword').value;
+            if (password.length < 8) {
+                errorEl.textContent = 'Password must be at least 8 characters';
+                return;
+            }
+
+            submitBtn.disabled = true;
+
+            try {
+                await Auth.register({
+                    name: document.getElementById('regName').value.trim(),
+                    email: document.getElementById('regEmail').value.trim(),
+                    phone: document.getElementById('regPhone').value.trim(),
+                    password: password
+                });
+                // Anything collected while signed out follows the visitor in
+                await Store.mergeGuestIntoAccount();
+                window.location.href = 'account.html';
+            } catch (err) {
+                errorEl.textContent = err.message;
+                submitBtn.disabled = false;
+            }
+        });
+    </script>
 
 </body>
 

@@ -1,50 +1,346 @@
-// Shared cart/wishlist/profile storage + UI wiring, used by every page.
-// State persists in localStorage so it survives navigation between pages.
+// Catalog loading + cart/wishlist storage.
+//
+// Storage has two backends. A signed-in visitor reads and writes the database
+// through /api, so the cart follows them between devices. A signed-out visitor
+// keeps working against localStorage, and that guest data is folded into the
+// account on sign-in (see Store.mergeGuestIntoAccount).
 const CART_KEY = 'shop_cart';
 const WISHLIST_KEY = 'shop_wishlist';
-const PROFILE_KEY = 'shop_profile';
 
-const PRODUCT_ICONS = {
-    'Nebula Hoodie': {
-        color: '#6d28d9',
-        bg: 'radial-gradient(circle, #ede9fe, #c4b5fd)',
-        svg: '<path fill="currentColor" d="M30 26 Q50 6 70 26 L70 34 Q50 24 30 34 Z"/><rect x="30" y="30" width="40" height="55" rx="10" fill="currentColor"/><rect x="10" y="34" width="18" height="34" rx="8" fill="currentColor" transform="rotate(-15 19 51)"/><rect x="72" y="34" width="18" height="34" rx="8" fill="currentColor" transform="rotate(15 81 51)"/><rect x="40" y="60" width="20" height="14" rx="4" fill="rgba(0,0,0,0.15)"/><circle cx="45" cy="34" r="2" fill="rgba(0,0,0,0.25)"/><circle cx="55" cy="34" r="2" fill="rgba(0,0,0,0.25)"/>'
+let PRODUCTS = [];
+let productsById = {};
+let SHIPPING_METHODS = {};
+let catalogPromise = null;
+
+// The catalog comes from the database via the API, so admin edits appear
+// immediately and prices can never be supplied by the browser.
+function loadCatalog() {
+    if (!catalogPromise) {
+        catalogPromise = fetch('api/products.php', { credentials: 'same-origin' })
+            .then((res) => {
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                return res.json();
+            })
+            .then((data) => {
+                PRODUCTS = Array.isArray(data.products) ? data.products : [];
+                SHIPPING_METHODS = data.shipping || {};
+                productsById = {};
+                PRODUCTS.forEach((p) => { productsById[p.id] = p; });
+                return PRODUCTS;
+            })
+            .catch((err) => {
+                console.error('Could not load the catalog:', err.message);
+                PRODUCTS = [];
+                productsById = {};
+                return PRODUCTS;
+            });
+    }
+    return catalogPromise;
+}
+
+// A product shows its uploaded image when it has one, and falls back to the
+// drawn SVG otherwise, so older products keep their illustrations.
+function fillProductMedia(el, product) {
+    el.style.background = product.icon.bg;
+    el.style.color = product.icon.color;
+    el.innerHTML = '';
+
+    if (product.image_url) {
+        const img = document.createElement('img');
+        img.src = product.image_url;
+        img.alt = product.name;
+        img.loading = 'lazy';
+        // A dead link falls back to the illustration rather than a broken icon
+        img.addEventListener('error', () => {
+            img.remove();
+            el.innerHTML = '<svg viewBox="0 0 100 100" aria-hidden="true">' + (product.icon.svg || '') + '</svg>';
+        });
+        el.appendChild(img);
+        return;
+    }
+
+    el.innerHTML = '<svg viewBox="0 0 100 100" aria-hidden="true">' + (product.icon.svg || '') + '</svg>';
+}
+
+function getProduct(id) {
+    return productsById[id] || null;
+}
+
+function goToProduct(id) {
+    window.location.href = 'product.html?id=' + encodeURIComponent(id);
+}
+
+function formatPrice(value) {
+    return '$' + value.toFixed(2);
+}
+
+/* ---------- Guest storage (localStorage) ---------- */
+
+function readJSON(key, fallback) {
+    try {
+        const parsed = JSON.parse(localStorage.getItem(key));
+        return parsed === null ? fallback : parsed;
+    } catch {
+        return fallback;
+    }
+}
+
+// Cart entries were once {name, price, qty}; those are resolved back to ids.
+function normalizeCartEntry(entry) {
+    if (!entry || typeof entry !== 'object') return null;
+    const qty = Number.isFinite(entry.qty) && entry.qty > 0 ? Math.floor(entry.qty) : 1;
+    if (entry.id && getProduct(entry.id)) return { id: entry.id, qty };
+    const legacy = entry.name ? PRODUCTS.find((p) => p.name === entry.name) : null;
+    return legacy ? { id: legacy.id, qty } : null;
+}
+
+function normalizeWishlistEntry(entry) {
+    if (typeof entry === 'string') return getProduct(entry) ? entry : null;
+    if (entry && entry.id && getProduct(entry.id)) return entry.id;
+    const legacy = entry && entry.name ? PRODUCTS.find((p) => p.name === entry.name) : null;
+    return legacy ? legacy.id : null;
+}
+
+function guestCart() {
+    const raw = readJSON(CART_KEY, []);
+    return Array.isArray(raw) ? raw.map(normalizeCartEntry).filter(Boolean) : [];
+}
+
+function saveGuestCart(items) {
+    localStorage.setItem(CART_KEY, JSON.stringify(items));
+}
+
+function guestWishlist() {
+    const raw = readJSON(WISHLIST_KEY, []);
+    return Array.isArray(raw) ? raw.map(normalizeWishlistEntry).filter(Boolean) : [];
+}
+
+function saveGuestWishlist(ids) {
+    localStorage.setItem(WISHLIST_KEY, JSON.stringify(ids));
+}
+
+/* ---------- Storage facade ---------- */
+
+const Store = {
+    async signedIn() {
+        if (typeof Auth === 'undefined') return false;
+        await Auth.load();
+        return Auth.isLoggedIn();
     },
-    'Solstice Sneakers': {
-        color: '#c2410c',
-        bg: 'radial-gradient(circle, #ffedd5, #fdba74)',
-        svg: '<path fill="currentColor" d="M12 66 Q12 54 24 52 L50 44 Q62 40 72 46 L86 54 Q92 57 92 64 L92 70 Q92 74 88 74 L18 74 Q12 74 12 68 Z"/><rect x="12" y="70" width="80" height="8" rx="4" fill="rgba(0,0,0,0.2)"/><path fill="rgba(0,0,0,0.15)" d="M24 52 L50 44 Q54 50 50 56 L28 62 Z"/>'
+
+    async cart() {
+        if (await Store.signedIn()) {
+            try {
+                const data = await Auth.get('api/cart.php');
+                return data.items || [];
+            } catch (err) {
+                console.error('Cart load failed:', err.message);
+                return [];
+            }
+        }
+        return guestCart();
     },
-    'Aurora Backpack': {
-        color: '#0f766e',
-        bg: 'radial-gradient(circle, #ccfbf1, #5eead4)',
-        svg: '<rect x="28" y="26" width="44" height="58" rx="16" fill="currentColor"/><path d="M38 26 Q38 12 50 12 Q62 12 62 26" fill="none" stroke="currentColor" stroke-width="7" stroke-linecap="round"/><rect x="36" y="38" width="28" height="18" rx="5" fill="rgba(0,0,0,0.18)"/><rect x="42" y="62" width="16" height="16" rx="4" fill="rgba(0,0,0,0.12)"/>'
+
+    async addToCart(id) {
+        if (!getProduct(id)) return;
+        if (await Store.signedIn()) {
+            await Auth.post('api/cart.php', { action: 'add', product_id: id });
+        } else {
+            const items = guestCart();
+            const existing = items.find((i) => i.id === id);
+            if (existing) {
+                existing.qty = Math.min(existing.qty + 1, 99);
+            } else {
+                items.push({ id, qty: 1 });
+            }
+            saveGuestCart(items);
+        }
+        await updateCartBadge();
+    },
+
+    async setQty(id, qty) {
+        if (await Store.signedIn()) {
+            await Auth.post('api/cart.php', { action: 'set', product_id: id, qty });
+        } else if (qty <= 0) {
+            saveGuestCart(guestCart().filter((i) => i.id !== id));
+        } else {
+            const items = guestCart();
+            const item = items.find((i) => i.id === id);
+            if (item) {
+                item.qty = Math.min(qty, 99);
+                saveGuestCart(items);
+            }
+        }
+        await updateCartBadge();
+    },
+
+    async removeFromCart(id) {
+        if (await Store.signedIn()) {
+            await Auth.post('api/cart.php', { action: 'remove', product_id: id });
+        } else {
+            saveGuestCart(guestCart().filter((i) => i.id !== id));
+        }
+        await updateCartBadge();
+    },
+
+    async wishlist() {
+        if (await Store.signedIn()) {
+            try {
+                const data = await Auth.get('api/wishlist.php');
+                return data.items || [];
+            } catch (err) {
+                console.error('Wishlist load failed:', err.message);
+                return [];
+            }
+        }
+        return guestWishlist();
+    },
+
+    async toggleWishlist(id) {
+        if (!getProduct(id)) return false;
+        if (await Store.signedIn()) {
+            const data = await Auth.post('api/wishlist.php', { action: 'toggle', product_id: id });
+            return (data.items || []).includes(id);
+        }
+        const list = guestWishlist();
+        const idx = list.indexOf(id);
+        if (idx > -1) {
+            list.splice(idx, 1);
+        } else {
+            list.push(id);
+        }
+        saveGuestWishlist(list);
+        return idx === -1;
+    },
+
+    async removeFromWishlist(id) {
+        if (await Store.signedIn()) {
+            await Auth.post('api/wishlist.php', { action: 'remove', product_id: id });
+        } else {
+            saveGuestWishlist(guestWishlist().filter((entry) => entry !== id));
+        }
+    },
+
+    // Called right after sign-in/registration: whatever the visitor collected
+    // while signed out is added to the account, then the local copy is cleared
+    // so it cannot be merged twice.
+    async mergeGuestIntoAccount() {
+        await loadCatalog();
+        const items = guestCart();
+        const wishes = guestWishlist();
+
+        try {
+            if (items.length) {
+                await Auth.post('api/cart.php', { action: 'merge', items });
+            }
+            if (wishes.length) {
+                await Auth.post('api/wishlist.php', { action: 'merge', items: wishes });
+            }
+        } catch (err) {
+            console.error('Merge failed:', err.message);
+            return;
+        }
+
+        localStorage.removeItem(CART_KEY);
+        localStorage.removeItem(WISHLIST_KEY);
     }
 };
 
-function goToProduct(name, price) {
-    window.location.href = 'empty.html?product=' + encodeURIComponent(name) + '&price=' + encodeURIComponent(price);
+/* ---------- Badge ---------- */
+
+async function updateCartBadge() {
+    const badges = document.querySelectorAll('.cart-badge');
+    if (!badges.length) return;
+    const items = await Store.cart();
+    const count = items.reduce((sum, item) => sum + item.qty, 0);
+    badges.forEach((badge) => {
+        badge.textContent = count;
+        badge.style.display = count > 0 ? 'flex' : 'none';
+    });
 }
 
-// Builds the illustration + name/price part of a cart or wishlist row.
-// Product names originate from the URL on empty.html, so they are treated as
-// untrusted and set with textContent, never interpolated into innerHTML.
-function buildItemMedia(item, priceLabel) {
-    const icon = PRODUCT_ICONS[item.name];
+/* ---------- Button wiring ---------- */
 
+// Pages render their own buttons and call these, and the DOMContentLoaded
+// handler below also sweeps the whole document. Without this guard a button
+// caught by both ends up with two click handlers, which added an item twice
+// and made a wishlist toggle fire twice and cancel itself out.
+function markBound(btn) {
+    if (btn.dataset.bound === '1') return false;
+    btn.dataset.bound = '1';
+    return true;
+}
+
+function initAddToCartButtons(root = document) {
+    root.querySelectorAll('.add-cart-btn').forEach((btn) => {
+        if (!markBound(btn)) return;
+        btn.addEventListener('click', async (e) => {
+            e.stopPropagation();
+            const original = btn.innerHTML;
+            btn.disabled = true;
+            try {
+                await Store.addToCart(btn.dataset.id);
+                btn.classList.add('added');
+                btn.textContent = 'Added ✓';
+            } catch (err) {
+                btn.textContent = 'Failed';
+                console.error(err);
+            }
+            setTimeout(() => {
+                btn.classList.remove('added');
+                btn.innerHTML = original;
+                btn.disabled = false;
+            }, 900);
+        });
+    });
+}
+
+async function initWishlistButtons(root = document) {
+    const buttons = root.querySelectorAll('.wishlist-btn');
+    if (!buttons.length) return;
+
+    const list = await Store.wishlist();
+
+    buttons.forEach((btn) => {
+        const id = btn.dataset.id;
+        const active = list.includes(id);
+        // State is refreshed even on a button that is already wired
+        btn.classList.toggle('active', active);
+        btn.setAttribute('aria-pressed', String(active));
+        btn.setAttribute('aria-label', (active ? 'Remove from' : 'Add to') + ' wishlist');
+
+        if (!markBound(btn)) return;
+
+        btn.addEventListener('click', async (e) => {
+            e.stopPropagation();
+            btn.disabled = true;
+            try {
+                const nowIn = await Store.toggleWishlist(id);
+                btn.classList.toggle('active', nowIn);
+                btn.setAttribute('aria-pressed', String(nowIn));
+                btn.setAttribute('aria-label', (nowIn ? 'Remove from' : 'Add to') + ' wishlist');
+            } catch (err) {
+                console.error(err);
+            }
+            btn.disabled = false;
+        });
+    });
+}
+
+/* ---------- Shared row pieces ---------- */
+
+// Only our own catalog SVG is assigned as markup; text uses textContent.
+function buildItemMedia(product, priceLabel) {
     const illustration = document.createElement('div');
     illustration.className = 'cart-item-illustration';
-    illustration.style.background = icon ? icon.bg : '#eee';
-    illustration.style.color = icon ? icon.color : '#999';
-    // icon.svg is our own static markup, looked up by exact name, never user input
-    illustration.innerHTML = '<svg viewBox="0 0 100 100" aria-hidden="true">' + (icon ? icon.svg : '') + '</svg>';
+    fillProductMedia(illustration, product);
 
     const info = document.createElement('div');
     info.className = 'cart-item-info';
 
     const nameEl = document.createElement('div');
     nameEl.className = 'cart-item-name';
-    nameEl.textContent = item.name;
+    nameEl.textContent = product.name;
 
     const priceEl = document.createElement('div');
     priceEl.className = 'cart-item-price';
@@ -53,7 +349,7 @@ function buildItemMedia(item, priceLabel) {
     info.append(nameEl, priceEl);
 
     [illustration, info].forEach((el) => {
-        el.addEventListener('click', () => goToProduct(item.name, item.price));
+        el.addEventListener('click', () => goToProduct(product.id));
     });
 
     const fragment = document.createDocumentFragment();
@@ -70,195 +366,59 @@ function makeIconButton(className, label, symbol) {
     return btn;
 }
 
-/* ---------- Cart ---------- */
-
-function getCart() {
-    try {
-        return JSON.parse(localStorage.getItem(CART_KEY)) || [];
-    } catch {
-        return [];
-    }
+function renderEmptyState(container, message) {
+    const p = document.createElement('p');
+    p.className = 'cart-empty';
+    p.textContent = message + ' ';
+    const link = document.createElement('a');
+    link.href = 'products.html';
+    link.textContent = 'Browse products';
+    p.appendChild(link);
+    container.appendChild(p);
 }
 
-function saveCart(cart) {
-    localStorage.setItem(CART_KEY, JSON.stringify(cart));
-    updateCartBadge();
-}
+/* ---------- Cart page ---------- */
 
-function addToCart(name, price) {
-    const cart = getCart();
-    const existing = cart.find((item) => item.name === name);
-    if (existing) {
-        existing.qty += 1;
-    } else {
-        cart.push({ name, price: parseFloat(price), qty: 1 });
-    }
-    saveCart(cart);
-}
-
-function removeFromCart(name) {
-    saveCart(getCart().filter((item) => item.name !== name));
-}
-
-function setQty(name, qty) {
-    if (qty <= 0) {
-        removeFromCart(name);
-        return;
-    }
-    const cart = getCart();
-    const item = cart.find((i) => i.name === name);
-    if (item) {
-        item.qty = qty;
-        saveCart(cart);
-    }
-}
-
-function cartCount() {
-    return getCart().reduce((sum, item) => sum + item.qty, 0);
-}
-
-function updateCartBadge() {
-    const count = cartCount();
-    document.querySelectorAll('.cart-badge').forEach((badge) => {
-        badge.textContent = count;
-        badge.style.display = count > 0 ? 'flex' : 'none';
-    });
-}
-
-function initAddToCartButtons(root = document) {
-    root.querySelectorAll('.add-cart-btn').forEach((btn) => {
-        btn.addEventListener('click', () => {
-            const { name, price } = btn.dataset;
-            addToCart(name, price);
-            const original = btn.innerHTML;
-            btn.classList.add('added');
-            btn.innerHTML = 'Added &#10003;';
-            setTimeout(() => {
-                btn.classList.remove('added');
-                btn.innerHTML = original;
-            }, 900);
-        });
-    });
-}
-
-/* ---------- Wishlist ---------- */
-
-function getWishlist() {
-    try {
-        return JSON.parse(localStorage.getItem(WISHLIST_KEY)) || [];
-    } catch {
-        return [];
-    }
-}
-
-function saveWishlist(list) {
-    localStorage.setItem(WISHLIST_KEY, JSON.stringify(list));
-}
-
-function isInWishlist(name) {
-    return getWishlist().some((item) => item.name === name);
-}
-
-function toggleWishlist(name, price) {
-    const list = getWishlist();
-    const idx = list.findIndex((item) => item.name === name);
-    if (idx > -1) {
-        list.splice(idx, 1);
-    } else {
-        list.push({ name, price: parseFloat(price) });
-    }
-    saveWishlist(list);
-    return idx === -1;
-}
-
-function removeFromWishlist(name) {
-    saveWishlist(getWishlist().filter((item) => item.name !== name));
-}
-
-function initWishlistButtons(root = document) {
-    root.querySelectorAll('.wishlist-btn').forEach((btn) => {
-        const { name } = btn.dataset;
-        btn.classList.toggle('active', isInWishlist(name));
-        btn.addEventListener('click', () => {
-            const nowIn = toggleWishlist(btn.dataset.name, btn.dataset.price);
-            btn.classList.toggle('active', nowIn);
-        });
-    });
-}
-
-/* ---------- Profile ---------- */
-
-function getProfile() {
-    try {
-        return JSON.parse(localStorage.getItem(PROFILE_KEY)) || {};
-    } catch {
-        return {};
-    }
-}
-
-function saveProfile(profile) {
-    localStorage.setItem(PROFILE_KEY, JSON.stringify(profile));
-}
-
-function initAccountPage() {
-    const form = document.getElementById('profileForm');
-    if (!form) return;
-
-    const profile = getProfile();
-    document.getElementById('profileName').value = profile.name || '';
-    document.getElementById('profileEmail').value = profile.email || '';
-    document.getElementById('profilePhone').value = profile.phone || '';
-
-    form.addEventListener('submit', (e) => {
-        e.preventDefault();
-        saveProfile({
-            name: document.getElementById('profileName').value.trim(),
-            email: document.getElementById('profileEmail').value.trim(),
-            phone: document.getElementById('profilePhone').value.trim()
-        });
-        const confirmEl = document.getElementById('saveConfirm');
-        confirmEl.classList.add('show');
-        setTimeout(() => confirmEl.classList.remove('show'), 1500);
-    });
-}
-
-/* ---------- Cart page rendering ---------- */
-
-function renderCartPage() {
+async function renderCartPage() {
     const container = document.getElementById('cartItems');
     if (!container) return;
 
     const totalEl = document.getElementById('cartTotal');
     const summaryEl = document.getElementById('cartSummary');
     const continueEl = document.getElementById('cartContinueLink');
+    const actionsEl = document.getElementById('cartActions');
 
-    function refresh() {
-        const cart = getCart();
+    async function refresh() {
+        const cart = await Store.cart();
         container.innerHTML = '';
 
         if (cart.length === 0) {
-            container.innerHTML = '<p class="cart-empty">Your cart is empty. <a href="products.html">Browse products</a></p>';
+            renderEmptyState(container, 'Your cart is empty.');
             if (summaryEl) summaryEl.style.display = 'none';
             if (continueEl) continueEl.style.display = 'none';
+            if (actionsEl) actionsEl.style.display = 'none';
             return;
         }
 
         if (summaryEl) summaryEl.style.display = 'flex';
         if (continueEl) continueEl.style.display = 'block';
+        if (actionsEl) actionsEl.style.display = 'flex';
 
         let total = 0;
 
         cart.forEach((item) => {
-            total += item.price * item.qty;
+            const product = getProduct(item.id);
+            if (!product) return;
+            total += product.price * item.qty;
 
             const row = document.createElement('div');
             row.className = 'cart-item';
-            row.appendChild(buildItemMedia(item, '$' + item.price.toFixed(2) + ' each'));
+            row.appendChild(buildItemMedia(product, formatPrice(product.price) + ' each'));
 
             const decBtn = makeIconButton('qty-btn', 'Decrease quantity', '−');
-            decBtn.addEventListener('click', () => {
-                setQty(item.name, item.qty - 1);
-                refresh();
+            decBtn.addEventListener('click', async () => {
+                await Store.setQty(item.id, item.qty - 1);
+                await refresh();
             });
 
             const qtyValue = document.createElement('span');
@@ -266,9 +426,9 @@ function renderCartPage() {
             qtyValue.textContent = item.qty;
 
             const incBtn = makeIconButton('qty-btn', 'Increase quantity', '+');
-            incBtn.addEventListener('click', () => {
-                setQty(item.name, item.qty + 1);
-                refresh();
+            incBtn.addEventListener('click', async () => {
+                await Store.setQty(item.id, item.qty + 1);
+                await refresh();
             });
 
             const qtyControls = document.createElement('div');
@@ -277,57 +437,57 @@ function renderCartPage() {
 
             const lineTotal = document.createElement('div');
             lineTotal.className = 'cart-item-total';
-            lineTotal.textContent = '$' + (item.price * item.qty).toFixed(2);
+            lineTotal.textContent = formatPrice(product.price * item.qty);
 
-            const removeBtn = makeIconButton('remove-btn', 'Remove ' + item.name, '✕');
-            removeBtn.addEventListener('click', () => {
-                removeFromCart(item.name);
-                refresh();
+            const removeBtn = makeIconButton('remove-btn', 'Remove ' + product.name, '✕');
+            removeBtn.addEventListener('click', async () => {
+                await Store.removeFromCart(item.id);
+                await refresh();
             });
 
             row.append(qtyControls, lineTotal, removeBtn);
             container.appendChild(row);
         });
 
-        if (totalEl) totalEl.textContent = '$' + total.toFixed(2);
+        if (totalEl) totalEl.textContent = formatPrice(total);
     }
 
-    refresh();
+    await refresh();
 }
 
-/* ---------- Wishlist page rendering ---------- */
+/* ---------- Wishlist page ---------- */
 
-function renderWishlistPage() {
+async function renderWishlistPage() {
     const container = document.getElementById('wishlistItems');
     if (!container) return;
 
-    function refresh() {
-        const list = getWishlist();
+    async function refresh() {
+        const list = await Store.wishlist();
         container.innerHTML = '';
 
         if (list.length === 0) {
-            container.innerHTML = '<p class="cart-empty">Your wishlist is empty. <a href="products.html">Browse products</a></p>';
+            renderEmptyState(container, 'Your wishlist is empty.');
             return;
         }
 
-        list.forEach((item) => {
+        list.forEach((id) => {
+            const product = getProduct(id);
+            if (!product) return;
+
             const row = document.createElement('div');
             row.className = 'cart-item';
-            row.appendChild(buildItemMedia(item, '$' + item.price.toFixed(2)));
+            row.appendChild(buildItemMedia(product, formatPrice(product.price)));
 
-            // dataset assignment sets the attribute value directly, so a name
-            // containing quotes or markup cannot break out of the attribute
             const addBtn = document.createElement('button');
             addBtn.type = 'button';
-            addBtn.className = 'btn btn-primary add-cart-btn';
-            addBtn.dataset.name = item.name;
-            addBtn.dataset.price = item.price;
+            addBtn.className = 'btn btn-buy add-cart-btn';
+            addBtn.dataset.id = product.id;
             addBtn.textContent = 'Add to cart';
 
-            const removeBtn = makeIconButton('remove-btn', 'Remove ' + item.name, '✕');
-            removeBtn.addEventListener('click', () => {
-                removeFromWishlist(item.name);
-                refresh();
+            const removeBtn = makeIconButton('remove-btn', 'Remove ' + product.name, '✕');
+            removeBtn.addEventListener('click', async () => {
+                await Store.removeFromWishlist(product.id);
+                await refresh();
             });
 
             row.append(addBtn, removeBtn);
@@ -337,14 +497,24 @@ function renderWishlistPage() {
         initAddToCartButtons(container);
     }
 
-    refresh();
+    await refresh();
 }
 
-document.addEventListener('DOMContentLoaded', () => {
-    updateCartBadge();
+/* ---------- Sync banner ---------- */
+
+// Tells signed-out visitors why their cart is not following them around.
+async function initSyncNotice() {
+    const notice = document.getElementById('syncNotice');
+    if (!notice) return;
+    notice.hidden = await Store.signedIn();
+}
+
+document.addEventListener('DOMContentLoaded', async () => {
+    await loadCatalog();
+    await updateCartBadge();
     initAddToCartButtons();
-    initWishlistButtons();
-    initAccountPage();
-    renderCartPage();
-    renderWishlistPage();
+    await initWishlistButtons();
+    await initSyncNotice();
+    await renderCartPage();
+    await renderWishlistPage();
 });

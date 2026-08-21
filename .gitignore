@@ -1,6 +1,9 @@
 # Local Claude Code settings
 .claude/settings.local.json
 
+# Backend secrets - database credentials must never reach the public repo
+api/config.php
+
 # OS files
 Thumbs.db
 desktop.ini

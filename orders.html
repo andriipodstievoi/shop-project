@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Shop</title>
+    <title>My Orders</title>
     <link rel="stylesheet" href="css_main.css?v=3">
 </head>
 
@@ -25,15 +25,6 @@
                 Shop
             </a>
         </div>
-
-        <form class="search-bar" id="catalogSearchForm" role="search">
-            <label class="visually-hidden" for="catalogSearch">Search products</label>
-            <input type="search" id="catalogSearch" placeholder="Search products" autocomplete="off">
-            <button type="submit" class="search-submit" aria-label="Search">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
-            </button>
-        </form>
-
         <div class="header-icons">
             <div class="icon-btn">
                 <a href="wishlist.html" aria-label="Wishlist">
@@ -59,39 +50,76 @@
     </header>
 
     <main>
-        <div class="catalog-layout">
+        <div class="cart-page">
+            <h1>My Orders</h1>
 
-            <aside class="catalog-sidebar">
-                <h2 class="sidebar-heading">Department</h2>
-                <ul class="category-list" id="categoryList"></ul>
-            </aside>
+            <p id="ordersLoading" class="account-loading">Loading…</p>
 
-            <section class="catalog-main">
-                <div class="catalog-results-bar">
-                    <div class="results-info">
-                        <span id="resultsCount"></span>
-                        <span id="activeQuery" class="active-query"></span>
-                    </div>
-                    <div class="sort-control">
-                        <label for="catalogSort">Sort by:</label>
-                        <select id="catalogSort">
-                            <option value="featured">Featured</option>
-                            <option value="price-asc">Price: Low to High</option>
-                            <option value="price-desc">Price: High to Low</option>
-                            <option value="rating">Avg. Customer Review</option>
-                        </select>
-                    </div>
+            <section class="profile-card" id="ordersSignedOut" hidden>
+                <p>Sign in to see your orders.</p>
+                <div class="profile-actions">
+                    <a href="login.html" class="btn btn-buy">Sign in</a>
                 </div>
-
-                <div class="catalog-grid" id="catalogGrid"></div>
             </section>
 
+            <div id="ordersList"></div>
         </div>
     </main>
 
     <script src="auth.js?v=3"></script>
     <script src="cart.js?v=3"></script>
-    <script src="catalog.js?v=3"></script>
+    <script src="orders-ui.js?v=3"></script>
+    <script>
+        (async () => {
+            const loading = document.getElementById('ordersLoading');
+            const signedOut = document.getElementById('ordersSignedOut');
+            const list = document.getElementById('ordersList');
+
+            const user = await Auth.load();
+            loading.hidden = true;
+
+            if (!user) {
+                signedOut.hidden = false;
+                return;
+            }
+
+            async function render(orders) {
+                list.innerHTML = '';
+
+                if (orders.length === 0) {
+                    const empty = document.createElement('p');
+                    empty.className = 'cart-empty';
+                    empty.textContent = 'No orders yet. ';
+                    const link = document.createElement('a');
+                    link.href = 'products.html';
+                    link.textContent = 'Browse products';
+                    empty.appendChild(link);
+                    list.appendChild(empty);
+                    return;
+                }
+
+                orders.forEach((order) => list.appendChild(buildOrderCard(order, {
+                    onCancel: async (orderId) => {
+                        const res = await Auth.post('api/orders.php', {
+                            action: 'cancel',
+                            order_id: orderId
+                        });
+                        await render(res.orders || []);
+                    }
+                })));
+            }
+
+            try {
+                const data = await Auth.get('api/orders.php');
+                await render(data.orders || []);
+            } catch (err) {
+                const msg = document.createElement('p');
+                msg.className = 'form-error';
+                msg.textContent = err.message;
+                list.appendChild(msg);
+            }
+        })();
+    </script>
 
 </body>
 
